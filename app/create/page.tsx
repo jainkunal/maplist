@@ -135,18 +135,23 @@ function CreateMapForm() {
           });
         } else {
           try {
-            const geocodeRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place.name)}&limit=1`);
-            const geocodeData = await geocodeRes.json();
-            const coords = geocodeData?.[0];
-            addPlace(listId, {
-              name: place.name,
-              lat: coords ? parseFloat(coords.lat) : 0,
-              lng: coords ? parseFloat(coords.lon) : 0,
-              tags: [],
-              notes: place.notes || '',
-              recommendedBy: '',
-              visited: false,
+            const geocodeRes = await fetch('/api/geocode', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: place.name }),
             });
+            const coords = await geocodeRes.json();
+            if (coords.lat || coords.lng) {
+              addPlace(listId, {
+                name: place.name,
+                lat: coords.lat,
+                lng: coords.lng,
+                tags: [],
+                notes: place.notes || '',
+                recommendedBy: '',
+                visited: false,
+              });
+            }
           } catch (geocodeError) {
             console.error(`Failed to geocode ${place.name}:`, geocodeError);
           }
