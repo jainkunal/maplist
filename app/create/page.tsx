@@ -22,6 +22,11 @@ function CreateMapForm() {
   const addList = useMapStore((state) => state.addList);
   const addPlace = useMapStore((state) => state.addPlace);
 
+  function extractGoogleMapsUrl(input: string): string | null {
+    const match = input.match(/https?:\/\/(maps\.app\.goo\.gl\/[^\s]+|(?:www\.)?google\.com\/maps\/[^\s]+)/);
+    return match ? match[0] : null;
+  }
+
   const handleGenerate = async () => {
     if (!text.trim()) {
       setError('Please enter some text to extract places from.');
@@ -32,24 +37,42 @@ function CreateMapForm() {
     setError('');
 
     try {
-      // 1. Extract places using Gemini
-      const extractRes = await fetch('/api/extract-places', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      });
+      let places: { name: string; lat: number; lng: number; notes?: string }[] = [];
 
-      if (!extractRes.ok) {
-        throw new Error('Failed to extract places from text.');
+      const gmapsUrl = extractGoogleMapsUrl(text);
+      if (gmapsUrl) {
+        // Use the scraper for Google Maps list links
+        const scrapeRes = await fetch('/api/scrape-gmaps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: gmapsUrl }),
+        });
+
+        if (scrapeRes.ok) {
+          const data = await scrapeRes.json();
+          places = data.places ?? [];
+        }
+        // Fall through to Gemini if scraper fails or returns nothing
       }
 
-      const { places } = await extractRes.json();
+      if (!places.length) {
+        // Fall back to Gemini for plain text or unsupported URLs
+        const extractRes = await fetch('/api/extract-places', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
 
-      if (!places || places.length === 0) {
+        if (!extractRes.ok) throw new Error('Failed to extract places from text.');
+        const data = await extractRes.json();
+        places = data.places ?? [];
+      }
+
+      if (!places.length) {
         throw new Error('No places found in the text or URL. If sharing a private list, try pasting the place names directly.');
       }
 
-      // 2. Create a new list
+      // Create a new list
       const listId = addList({
         title: 'New Curated Map',
         description: 'Generated from text',
@@ -57,41 +80,38 @@ function CreateMapForm() {
         isPublic: false,
       });
 
-      // 3. Geocode each place and add to list
+      // Add places — scraped results already have coords, Gemini results need geocoding
       for (const place of places) {
-        try {
-          const geocodeRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place.name)}&limit=1`);
-          const geocodeData = await geocodeRes.json();
-
-          if (geocodeData && geocodeData.length > 0) {
-            const { lat, lon } = geocodeData[0];
+        if (place.lat && place.lng) {
+          addPlace(listId, {
+            name: place.name,
+            lat: place.lat,
+            lng: place.lng,
+            tags: [],
+            notes: place.notes || '',
+            recommendedBy: '',
+            visited: false,
+          });
+        } else {
+          try {
+            const geocodeRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(place.name)}&limit=1`);
+            const geocodeData = await geocodeRes.json();
+            const coords = geocodeData?.[0];
             addPlace(listId, {
               name: place.name,
-              lat: parseFloat(lat),
-              lng: parseFloat(lon),
+              lat: coords ? parseFloat(coords.lat) : 0,
+              lng: coords ? parseFloat(coords.lon) : 0,
               tags: [],
               notes: place.notes || '',
               recommendedBy: '',
               visited: false,
             });
-          } else {
-            // Add without coordinates if not found
-            addPlace(listId, {
-              name: place.name,
-              lat: 0,
-              lng: 0,
-              tags: [],
-              notes: place.notes || '',
-              recommendedBy: '',
-              visited: false,
-            });
+          } catch (geocodeError) {
+            console.error(`Failed to geocode ${place.name}:`, geocodeError);
           }
-        } catch (geocodeError) {
-          console.error(`Failed to geocode ${place.name}:`, geocodeError);
         }
       }
 
-      // 4. Redirect to the new list
       router.push(`/lists/${listId}`);
     } catch (err: any) {
       setError(err.message || 'An error occurred while generating the map.');
