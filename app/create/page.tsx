@@ -65,6 +65,7 @@ function CreateMapForm() {
         const igUrl = extractInstagramUrl(text);
         if (igUrl) {
           let captionContext: string | undefined;
+          let imageUrls: string[] = [];
           try {
             const igRes = await fetch('/api/scrape-instagram', {
               method: 'POST',
@@ -74,13 +75,14 @@ function CreateMapForm() {
             if (igRes.ok) {
               const igData = await igRes.json();
               captionContext = igData.caption || undefined;
+              imageUrls = igData.imageUrls || [];
             }
           } catch { /* silent fallthrough */ }
 
           const extractRes = await fetch('/api/extract-places', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, captionContext }),
+            body: JSON.stringify({ text, captionContext, imageUrls }),
           });
           if (!extractRes.ok) throw new Error('Failed to extract places from Instagram post.');
           const data = await extractRes.json();

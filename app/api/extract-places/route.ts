@@ -3,12 +3,89 @@ import { NextResponse } from 'next/server';
 
 const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
 
+const PLACE_SCHEMA = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      name: {
+        type: Type.STRING,
+        description: 'The name of the place.',
+      },
+      notes: {
+        type: Type.STRING,
+        description: 'Any notes, context, or recommendations associated with the place from the text or URL.',
+      },
+    },
+    required: ['name'],
+  },
+};
+
+async function fetchImageAsBase64(url: string): Promise<{ mimeType: string; data: string } | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || 'image/jpeg';
+    const mimeType = contentType.split(';')[0].trim();
+    if (!mimeType.startsWith('image/')) return null;
+    const buffer = await res.arrayBuffer();
+    const data = Buffer.from(buffer).toString('base64');
+    return { mimeType, data };
+  } catch {
+    return null;
+  }
+}
+
+async function extractPlacesFromImages(imageUrls: string[]): Promise<{ name: string; notes?: string }[]> {
+  const imageDataList = await Promise.all(imageUrls.slice(0, 10).map(fetchImageAsBase64));
+  const validImages = imageDataList.filter(Boolean) as { mimeType: string; data: string }[];
+
+  if (validImages.length === 0) return [];
+
+  const parts: object[] = [
+    {
+      text: `Look at these Instagram post images. Extract ALL place names, restaurant names, bar names, cafe names, hotel names, landmark names, or any location names that appear as text overlaid on the images or written in the images.
+
+Return ONLY place names that are explicitly visible as text in the images. Do not guess or infer — only return what you can actually read.
+
+If you see numbered lists or bullet points with place names in the images, extract all of them.`,
+    },
+    ...validImages.map((img) => ({ inlineData: img })),
+  ];
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.0-flash',
+    contents: [{ role: 'user', parts }],
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: PLACE_SCHEMA,
+    },
+  });
+
+  return JSON.parse(response.text || '[]');
+}
+
 export async function POST(req: Request) {
   try {
-    const { text, captionContext } = await req.json();
+    const { text, captionContext, imageUrls } = await req.json();
 
     if (!text) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });
+    }
+
+    // If we have image URLs, try vision-based extraction first
+    if (imageUrls?.length) {
+      try {
+        console.log('[extract-places] Trying vision extraction on', imageUrls.length, 'images');
+        const visionPlaces = await extractPlacesFromImages(imageUrls);
+        if (visionPlaces.length > 0) {
+          console.log('[extract-places] Vision extracted', visionPlaces.length, 'places');
+          return NextResponse.json({ places: visionPlaces });
+        }
+        console.log('[extract-places] Vision found no places, falling through to text extraction');
+      } catch (err: any) {
+        console.warn('[extract-places] Vision extraction failed:', err.message);
+      }
     }
 
     const promptInput = captionContext
@@ -36,23 +113,7 @@ export async function POST(req: Request) {
       ${promptInput}`,
       config: {
         responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              name: {
-                type: Type.STRING,
-                description: 'The name of the place.',
-              },
-              notes: {
-                type: Type.STRING,
-                description: 'Any notes, context, or recommendations associated with the place from the text or URL.',
-              },
-            },
-            required: ['name'],
-          },
-        },
+        responseSchema: PLACE_SCHEMA,
         tools: [{ googleSearch: {} }, { urlContext: {} }],
       },
     });
