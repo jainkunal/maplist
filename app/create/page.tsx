@@ -27,6 +27,11 @@ function CreateMapForm() {
     return match ? match[0] : null;
   }
 
+  function extractInstagramUrl(input: string): string | null {
+    const match = input.match(/https?:\/\/(?:www\.)?instagram\.com\/(?:reel|p)\/[A-Za-z0-9_-]+[^\s]*/);
+    return match ? match[0] : null;
+  }
+
   const handleGenerate = async () => {
     if (!text.trim()) {
       setError('Please enter some text to extract places from.');
@@ -58,6 +63,33 @@ function CreateMapForm() {
       }
 
       if (!places.length) {
+        const igUrl = extractInstagramUrl(text);
+        if (igUrl) {
+          let captionContext: string | undefined;
+          try {
+            const igRes = await fetch('/api/scrape-instagram', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: igUrl }),
+            });
+            if (igRes.ok) {
+              const igData = await igRes.json();
+              captionContext = igData.caption || undefined;
+            }
+          } catch { /* silent fallthrough */ }
+
+          const extractRes = await fetch('/api/extract-places', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, captionContext }),
+          });
+          if (!extractRes.ok) throw new Error('Failed to extract places from Instagram post.');
+          const data = await extractRes.json();
+          places = data.places ?? [];
+        }
+      }
+
+      if (!places.length) {
         // Fall back to Gemini for plain text or unsupported URLs
         const extractRes = await fetch('/api/extract-places', {
           method: 'POST',
@@ -71,7 +103,14 @@ function CreateMapForm() {
       }
 
       if (!places.length) {
-        throw new Error('No places found in the text or URL. If sharing a private list, try pasting the place names directly.');
+        const isInstagram = text.includes('instagram.com');
+        const isSocialMedia = isInstagram || text.includes('tiktok.com') || text.includes('youtube.com');
+        const hint = isInstagram
+          ? 'No places found in this Instagram post. The reel may be private or may not mention specific places. Try pasting the caption text directly.'
+          : isSocialMedia
+          ? 'No places found. Social media posts may require login. Try pasting the caption or place names from the post.'
+          : 'No places found. Try pasting the place names or caption text directly.';
+        throw new Error(hint);
       }
 
       // Create a new list

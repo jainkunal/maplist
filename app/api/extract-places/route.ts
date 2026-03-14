@@ -5,23 +5,35 @@ const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
 
 export async function POST(req: Request) {
   try {
-    const { text } = await req.json();
+    const { text, captionContext } = await req.json();
 
     if (!text) {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 });
     }
 
+    const promptInput = captionContext
+      ? `The following is caption/description text extracted from: ${text}\n\nCaption text:\n${captionContext}`
+      : text;
+
     const response = await ai.models.generateContent({
       model: 'gemini-3.1-pro-preview',
-      contents: `You are an expert travel curator. Extract a list of places from the following text or URL. 
-      If a URL is provided (like a Google Maps list or Instagram post), attempt to use your tools to read the content of the URL and extract the places listed in it.
-      
-      CRITICAL INSTRUCTION: If you cannot access the URL (e.g., due to privacy restrictions, login walls, or insufficient permissions), DO NOT FAIL. Instead, fallback to extracting any place names, cities, or context mentioned directly in the text itself. Often, users share links that contain the place name right in the text (e.g., "Eiffel Tower \\n https://maps.app.goo.gl/...").
-      
+      contents: `You are an expert travel curator. Extract a list of places from the following text or URL.
+
+      STEP 1: If the input contains a URL, first try to access it directly using urlContext.
+
+      STEP 2: If the URL is from Instagram, TikTok, YouTube, or another social media platform that requires login, DO NOT give up. Instead, use googleSearch to search for the content. For example:
+      - For Instagram reels/posts: search for the reel/post ID or URL to find the caption and tagged places
+      - Try queries like: site:instagram.com [post-id] places OR "[post-id]" instagram places restaurants
+      - Also try searching for the username and common travel terms if visible in the URL
+
+      STEP 3: If you still cannot find specific places via search, extract any place names, cities, or context mentioned directly in the text itself.
+
+      CRITICAL: DO NOT return an empty list. If you truly cannot find any places, return at minimum the city or region you can infer from any context clues.
+
       For each place, provide its name and any context, notes, or descriptions associated with it.
-      
+
       Text/URL:
-      ${text}`,
+      ${promptInput}`,
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
