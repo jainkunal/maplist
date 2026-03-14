@@ -1,33 +1,26 @@
 'use client';
 
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMapStore } from '@/store/useMapStore';
 import { Map, Sparkles, Loader2 } from 'lucide-react';
 
 function CreateMapForm() {
-  const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const initialized = useRef(false);
-  const addList = useMapStore((state) => state.addList);
-  const addPlace = useMapStore((state) => state.addPlace);
-
-  useEffect(() => {
-    if (initialized.current) return;
-    
+  const [text, setText] = useState(() => {
     const sharedTitle = searchParams.get('title');
     const sharedText = searchParams.get('text');
     const sharedUrl = searchParams.get('url');
-
     if (sharedTitle || sharedText || sharedUrl) {
-      const combined = [sharedTitle, sharedText, sharedUrl].filter(Boolean).join('\n\n');
-      setText(combined);
-      initialized.current = true;
+      return [sharedTitle, sharedText, sharedUrl].filter(Boolean).join('\n\n');
     }
-  }, [searchParams]);
+    return '';
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+  const addList = useMapStore((state) => state.addList);
+  const addPlace = useMapStore((state) => state.addPlace);
 
   const handleGenerate = async () => {
     if (!text.trim()) {
