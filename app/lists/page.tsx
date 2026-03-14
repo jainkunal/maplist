@@ -1,11 +1,20 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useMapStore } from '@/store/useMapStore';
+import { dbListToMapList } from '@/lib/mappers';
 import Link from 'next/link';
 import { Map as MapIcon, Search, Share, Lock, Globe, Plus } from 'lucide-react';
 
 export default function ListsPage() {
   const lists = useMapStore((state) => state.lists);
+  const setLists = useMapStore((state) => state.setLists);
+
+  useEffect(() => {
+    fetch('/api/lists')
+      .then((r) => r.json())
+      .then((data) => setLists(data.map(dbListToMapList)));
+  }, [setLists]);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
@@ -18,7 +27,7 @@ export default function ListsPage() {
             <h1 className="text-xl font-bold tracking-tight">My Lists</h1>
           </div>
         </div>
-        
+
         <div className="flex border-b border-slate-200 px-4 max-w-5xl mx-auto">
           <button className="flex flex-col items-center justify-center border-b-2 border-blue-600 text-blue-600 px-4 pb-3 pt-4 font-semibold text-sm">
             All Lists
@@ -36,9 +45,9 @@ export default function ListsPage() {
         <div className="mb-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input 
-              type="text" 
-              placeholder="Search your maps..." 
+            <input
+              type="text"
+              placeholder="Search your maps..."
               className="w-full bg-slate-100 border-none rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-blue-600 text-sm"
             />
           </div>
@@ -55,7 +64,7 @@ export default function ListsPage() {
                   </span>
                 </div>
               </div>
-              
+
               <div className="p-4 flex flex-col flex-1">
                 <div className="flex justify-between items-start mb-1">
                   <h3 className="text-lg font-bold leading-tight group-hover:text-blue-600 transition-colors">{list.title}</h3>
@@ -63,14 +72,14 @@ export default function ListsPage() {
                     <Share className="w-5 h-5" />
                   </button>
                 </div>
-                
+
                 <div className="flex items-center gap-2 text-slate-500 text-xs mb-4">
                   <MapIcon className="w-4 h-4" />
                   <span>{list.places.length} places</span>
                   <span className="mx-1">•</span>
                   <span>{new Date(list.createdAt).toLocaleDateString()}</span>
                 </div>
-                
+
                 <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
                     {list.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}

@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model List {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @default("")
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  places      Place[]
+}
+
+model Place {
+  id            String   @id @default(uuid())
+  name          String
+  lat           Float
+  lng           Float
+  tags          String[]
+  notes         String   @default("")
+  recommendedBy String   @default("")
+  visited       Boolean  @default(false)
+  order         Int      @default(0)
+  listId        String
+  list          List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+}

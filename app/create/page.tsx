@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMapStore } from '@/store/useMapStore';
+import { dbListToMapList } from '@/lib/mappers';
 import { Map, Sparkles, Loader2 } from 'lucide-react';
 
 function CreateMapForm() {
@@ -19,8 +20,8 @@ function CreateMapForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
-  const addList = useMapStore((state) => state.addList);
-  const addPlace = useMapStore((state) => state.addPlace);
+  const setLists = useMapStore((state) => state.setLists);
+  const lists = useMapStore((state) => state.lists);
 
   function extractGoogleMapsUrl(input: string): string | null {
     const match = input.match(/https?:\/\/(maps\.app\.goo\.gl\/[^\s]+|(?:www\.)?google\.com\/maps\/[^\s]+)/);
@@ -42,12 +43,11 @@ function CreateMapForm() {
     setError('');
 
     try {
-      let places: { name: string; lat: number; lng: number; notes?: string }[] = [];
+      let rawPlaces: { name: string; lat: number; lng: number; notes?: string }[] = [];
       let listTitle = 'New Curated Map';
 
       const gmapsUrl = extractGoogleMapsUrl(text);
       if (gmapsUrl) {
-        // Use the scraper for Google Maps list links
         const scrapeRes = await fetch('/api/scrape-gmaps', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -56,13 +56,12 @@ function CreateMapForm() {
 
         if (scrapeRes.ok) {
           const data = await scrapeRes.json();
-          places = data.places ?? [];
+          rawPlaces = data.places ?? [];
           if (data.title) listTitle = data.title;
         }
-        // Fall through to Gemini if scraper fails or returns nothing
       }
 
-      if (!places.length) {
+      if (!rawPlaces.length) {
         const igUrl = extractInstagramUrl(text);
         if (igUrl) {
           let captionContext: string | undefined;
@@ -85,12 +84,11 @@ function CreateMapForm() {
           });
           if (!extractRes.ok) throw new Error('Failed to extract places from Instagram post.');
           const data = await extractRes.json();
-          places = data.places ?? [];
+          rawPlaces = data.places ?? [];
         }
       }
 
-      if (!places.length) {
-        // Fall back to Gemini for plain text or unsupported URLs
+      if (!rawPlaces.length) {
         const extractRes = await fetch('/api/extract-places', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -99,10 +97,10 @@ function CreateMapForm() {
 
         if (!extractRes.ok) throw new Error('Failed to extract places from text.');
         const data = await extractRes.json();
-        places = data.places ?? [];
+        rawPlaces = data.places ?? [];
       }
 
-      if (!places.length) {
+      if (!rawPlaces.length) {
         const isInstagram = text.includes('instagram.com');
         const isSocialMedia = isInstagram || text.includes('tiktok.com') || text.includes('youtube.com');
         const hint = isInstagram
@@ -113,26 +111,11 @@ function CreateMapForm() {
         throw new Error(hint);
       }
 
-      // Create a new list
-      const listId = addList({
-        title: listTitle,
-        description: 'Generated from text',
-        places: [],
-        isPublic: false,
-      });
-
-      // Add places — scraped results already have coords, Gemini results need geocoding
-      for (const place of places) {
+      // Geocode places that are missing coordinates
+      const geocodedPlaces: { name: string; lat: number; lng: number; notes: string }[] = [];
+      for (const place of rawPlaces) {
         if (place.lat && place.lng) {
-          addPlace(listId, {
-            name: place.name,
-            lat: place.lat,
-            lng: place.lng,
-            tags: [],
-            notes: place.notes || '',
-            recommendedBy: '',
-            visited: false,
-          });
+          geocodedPlaces.push({ name: place.name, lat: place.lat, lng: place.lng, notes: place.notes || '' });
         } else {
           try {
             const geocodeRes = await fetch('/api/geocode', {
@@ -142,15 +125,7 @@ function CreateMapForm() {
             });
             const coords = await geocodeRes.json();
             if (coords.lat || coords.lng) {
-              addPlace(listId, {
-                name: place.name,
-                lat: coords.lat,
-                lng: coords.lng,
-                tags: [],
-                notes: place.notes || '',
-                recommendedBy: '',
-                visited: false,
-              });
+              geocodedPlaces.push({ name: place.name, lat: coords.lat, lng: coords.lng, notes: place.notes || '' });
             }
           } catch (geocodeError) {
             console.error(`Failed to geocode ${place.name}:`, geocodeError);
@@ -158,9 +133,35 @@ function CreateMapForm() {
         }
       }
 
-      router.push(`/lists/${listId}`);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while generating the map.');
+      // Save the list + all places to the database in one request
+      const createRes = await fetch('/api/lists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: listTitle,
+          description: 'Generated from text',
+          isPublic: false,
+          places: geocodedPlaces.map((p) => ({
+            name: p.name,
+            lat: p.lat,
+            lng: p.lng,
+            notes: p.notes,
+            tags: [],
+            recommendedBy: '',
+            visited: false,
+          })),
+        }),
+      });
+
+      if (!createRes.ok) throw new Error('Failed to save the list.');
+      const newList = await createRes.json();
+
+      // Hydrate local store
+      setLists([...lists, dbListToMapList(newList)]);
+
+      router.push(`/lists/${newList.id}`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred while generating the map.');
     } finally {
       setLoading(false);
     }
@@ -184,13 +185,13 @@ function CreateMapForm() {
             <label className="text-sm font-semibold uppercase tracking-wider text-slate-500">Places List</label>
             <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">Smart Detection On</span>
           </div>
-          
+
           <div className="relative group">
             <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-200 to-transparent rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-            <textarea 
+            <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="relative w-full min-h-[320px] rounded-2xl p-6 bg-white text-lg leading-relaxed focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all border-slate-200 placeholder:text-slate-400" 
+              className="relative w-full min-h-[320px] rounded-2xl p-6 bg-white text-lg leading-relaxed focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all border-slate-200 placeholder:text-slate-400"
               placeholder="Paste your list here...&#10;&#10;Example:&#10;1. Eiffel Tower, Paris&#10;2. Louvre Museum&#10;3. Notre Dame Cathedral&#10;4. Sacré-Cœur, Montmartre..."
               disabled={loading}
             />
@@ -202,7 +203,7 @@ function CreateMapForm() {
         </div>
 
         <div className="pt-4">
-          <button 
+          <button
             onClick={handleGenerate}
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-5 rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3 transition-all transform active:scale-[0.98]"

@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useMapStore, Place } from '@/store/useMapStore';
+import { dbListToMapList } from '@/lib/mappers';
 import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X, Trash2, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -15,8 +16,9 @@ export default function ListDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
-  
+
   const lists = useMapStore((state) => state.lists);
+  const setLists = useMapStore((state) => state.setLists);
   const updatePlace = useMapStore((state) => state.updatePlace);
   const updateList = useMapStore((state) => state.updateList);
   const deleteList = useMapStore((state) => state.deleteList);
@@ -29,6 +31,19 @@ export default function ListDetailPage() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Fetch list from DB on mount if not already in store
+  useEffect(() => {
+    if (list) return;
+    fetch(`/api/lists/${id}`)
+      .then((r) => {
+        if (!r.ok) return null;
+        return r.json();
+      })
+      .then((data) => {
+        if (data) setLists([...lists, dbListToMapList(data)]);
+      });
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -57,12 +72,18 @@ export default function ListDetailPage() {
     );
   }
 
-  const filteredPlaces = activeTag 
+  const filteredPlaces = activeTag
     ? list.places.filter(p => p.tags.includes(activeTag))
     : list.places;
 
   const handleToggleVisited = (placeId: string, currentStatus: boolean) => {
-    updatePlace(list.id, placeId, { visited: !currentStatus });
+    const visited = !currentStatus;
+    updatePlace(list.id, placeId, { visited });
+    fetch(`/api/lists/${list.id}/places/${placeId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visited }),
+    });
   };
 
   const startEditing = (place: Place) => {
@@ -75,13 +96,31 @@ export default function ListDetailPage() {
   };
 
   const saveEditing = (placeId: string) => {
-    const tagsArray = editForm.tags.split(',').map(t => t.trim()).filter(t => t !== '');
-    updatePlace(list.id, placeId, {
-      notes: editForm.notes,
-      tags: tagsArray,
-      recommendedBy: editForm.recommendedBy
+    const tags = editForm.tags.split(',').map(t => t.trim()).filter(t => t !== '');
+    const update = { notes: editForm.notes, tags, recommendedBy: editForm.recommendedBy };
+    updatePlace(list.id, placeId, update);
+    fetch(`/api/lists/${list.id}/places/${placeId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(update),
     });
     setEditingPlaceId(null);
+  };
+
+  const handleRenameList = (title: string) => {
+    updateList(id, { title });
+    fetch(`/api/lists/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title }),
+    });
+    setEditingTitle(false);
+  };
+
+  const handleDeleteList = () => {
+    deleteList(id);
+    fetch(`/api/lists/${id}`, { method: 'DELETE' });
+    router.push('/lists');
   };
 
   return (
@@ -103,12 +142,12 @@ export default function ListDetailPage() {
                   value={titleDraft}
                   onChange={(e) => setTitleDraft(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') { updateList(id, { title: titleDraft }); setEditingTitle(false); }
+                    if (e.key === 'Enter') handleRenameList(titleDraft);
                     if (e.key === 'Escape') setEditingTitle(false);
                   }}
                   className="text-lg font-bold rounded px-2 py-0.5 border border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
                 />
-                <button onClick={() => { updateList(id, { title: titleDraft }); setEditingTitle(false); }} className="text-blue-600"><Check className="w-4 h-4" /></button>
+                <button onClick={() => handleRenameList(titleDraft)} className="text-blue-600"><Check className="w-4 h-4" /></button>
                 <button onClick={() => setEditingTitle(false)} className="text-slate-400"><X className="w-4 h-4" /></button>
               </div>
             ) : (
@@ -147,7 +186,7 @@ export default function ListDetailPage() {
                   <Pencil className="w-4 h-4" /> Rename list
                 </button>
                 <button
-                  onClick={() => { deleteList(id); router.push('/lists'); }}
+                  onClick={handleDeleteList}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" /> Delete list
@@ -166,23 +205,23 @@ export default function ListDetailPage() {
       {/* Filter Chips */}
       {allTags.length > 0 && (
         <div className="flex gap-2 p-4 overflow-x-auto no-scrollbar bg-white border-b border-slate-200">
-          <button 
+          <button
             onClick={() => setActiveTag(null)}
             className={`flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-4 text-sm font-medium transition-colors ${
-              activeTag === null 
-                ? 'bg-blue-600 text-white' 
+              activeTag === null
+                ? 'bg-blue-600 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             All Places
           </button>
           {allTags.map(tag => (
-            <button 
+            <button
               key={tag}
               onClick={() => setActiveTag(tag)}
               className={`flex h-9 shrink-0 items-center justify-center gap-x-2 rounded-full px-4 text-sm font-medium transition-colors ${
-                activeTag === tag 
-                  ? 'bg-blue-600 text-white' 
+                activeTag === tag
+                  ? 'bg-blue-600 text-white'
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
@@ -209,20 +248,20 @@ export default function ListDetailPage() {
                         Visited
                       </span>
                     )}
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       checked={place.visited}
                       onChange={() => handleToggleVisited(place.id, place.visited)}
-                      className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer" 
+                      className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer"
                     />
                   </div>
                 </div>
-                
+
                 {editingPlaceId === place.id ? (
                   <div className="mt-3 space-y-3">
                     <div>
                       <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Notes</label>
-                      <textarea 
+                      <textarea
                         value={editForm.notes}
                         onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
                         className="w-full mt-1 text-sm rounded-lg border-slate-200 focus:ring-blue-600 focus:border-blue-600"
@@ -231,7 +270,7 @@ export default function ListDetailPage() {
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tags (comma separated)</label>
-                      <input 
+                      <input
                         type="text"
                         value={editForm.tags}
                         onChange={(e) => setEditForm({...editForm, tags: e.target.value})}
@@ -241,7 +280,7 @@ export default function ListDetailPage() {
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Recommended By</label>
-                      <input 
+                      <input
                         type="text"
                         value={editForm.recommendedBy}
                         onChange={(e) => setEditForm({...editForm, recommendedBy: e.target.value})}
@@ -250,13 +289,13 @@ export default function ListDetailPage() {
                       />
                     </div>
                     <div className="flex gap-2 pt-2">
-                      <button 
+                      <button
                         onClick={() => saveEditing(place.id)}
                         className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1"
                       >
                         <Check className="w-4 h-4" /> Save
                       </button>
-                      <button 
+                      <button
                         onClick={() => setEditingPlaceId(null)}
                         className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-1"
                       >
@@ -279,7 +318,7 @@ export default function ListDetailPage() {
                       </div>
                     )}
                     <div className="mt-4 flex items-center justify-between">
-                      <a 
+                      <a
                         href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -288,7 +327,7 @@ export default function ListDetailPage() {
                         <Navigation className="w-3 h-3" />
                         Navigate
                       </a>
-                      <button 
+                      <button
                         onClick={() => startEditing(place)}
                         className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-900 px-3 py-1.5 rounded-full hover:bg-slate-100 transition-colors"
                       >
@@ -300,7 +339,7 @@ export default function ListDetailPage() {
                 )}
               </div>
             </div>
-            
+
             {place.recommendedBy && editingPlaceId !== place.id && (
               <div className="px-4 py-3 bg-slate-50 border-t border-slate-200">
                 <div className="flex items-center gap-2">
