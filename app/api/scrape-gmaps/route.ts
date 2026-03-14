@@ -89,7 +89,7 @@ async function fetchListPayload(listId: string): Promise<string> {
   return httpsGetBody(apiUrl);
 }
 
-function extractPlaces(payload: string) {
+function extractList(payload: string): { title: string; places: ReturnType<typeof extractPlaces> } {
   let text = payload.trimStart();
   for (const prefix of [")]}'\n", ")]}'", ")]}\n"]) {
     if (text.startsWith(prefix)) {
@@ -99,7 +99,12 @@ function extractPlaces(payload: string) {
   }
 
   const data = JSON.parse(text);
-  const placesArray = data[0][8];
+  const title = (data[0][4] as string) || 'Imported List';
+  const places = extractPlaces(data[0][8]);
+  return { title, places };
+}
+
+function extractPlaces(placesArray: any[]) {
   const places = [];
 
   for (const entry of placesArray) {
@@ -140,13 +145,13 @@ export async function POST(req: Request) {
     if (!listId) throw new Error('Could not extract list ID from URL');
 
     const payload = await fetchListPayload(listId);
-    const places = extractPlaces(payload);
+    const { title, places } = extractList(payload);
 
     if (!places.length) {
       return NextResponse.json({ error: 'No places found in list' }, { status: 404 });
     }
 
-    return NextResponse.json({ places });
+    return NextResponse.json({ title, places });
   } catch (error: any) {
     console.error('[scrape-gmaps] Error:', error.message);
     return NextResponse.json({ error: error.message ?? 'Failed to scrape list' }, { status: 500 });

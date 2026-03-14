@@ -2,9 +2,9 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useMapStore, Place } from '@/store/useMapStore';
-import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X } from 'lucide-react';
+import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X, Trash2, Pencil } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
   ssr: false,
@@ -18,11 +18,26 @@ export default function ListDetailPage() {
   
   const lists = useMapStore((state) => state.lists);
   const updatePlace = useMapStore((state) => state.updatePlace);
-  
+  const updateList = useMapStore((state) => state.updateList);
+  const deleteList = useMapStore((state) => state.deleteList);
+
   const list = lists.find((l) => l.id === id);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [editingPlaceId, setEditingPlaceId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{ notes: string; tags: string; recommendedBy: string }>({ notes: '', tags: '', recommendedBy: '' });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
 
   const allTags = useMemo(() => {
     if (!list) return [];
@@ -73,25 +88,73 @@ export default function ListDetailPage() {
     <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-slate-50 pb-24">
       {/* Header */}
       <header className="sticky top-0 z-50 flex items-center bg-white/80 backdrop-blur-md p-4 justify-between border-b border-slate-200">
-        <div className="flex items-center gap-3">
-          <button 
+        <div className="flex items-center gap-3 min-w-0">
+          <button
             onClick={() => router.push('/lists')}
             className="text-slate-900 flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
-          <div>
-            <h1 className="text-slate-900 text-lg font-bold leading-tight tracking-tight truncate max-w-[200px]">{list.title}</h1>
+          <div className="min-w-0">
+            {editingTitle ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { updateList(id, { title: titleDraft }); setEditingTitle(false); }
+                    if (e.key === 'Escape') setEditingTitle(false);
+                  }}
+                  className="text-lg font-bold rounded px-2 py-0.5 border border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+                />
+                <button onClick={() => { updateList(id, { title: titleDraft }); setEditingTitle(false); }} className="text-blue-600"><Check className="w-4 h-4" /></button>
+                <button onClick={() => setEditingTitle(false)} className="text-slate-400"><X className="w-4 h-4" /></button>
+              </div>
+            ) : (
+              <h1 className="text-slate-900 text-lg font-bold leading-tight tracking-tight truncate max-w-[200px]">{list.title}</h1>
+            )}
             <p className="text-xs text-slate-500">{list.places.length} places</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 text-slate-900">
+          <button
+            onClick={async () => {
+              const url = window.location.href;
+              if (navigator.share) {
+                await navigator.share({ title: list.title, url });
+              } else {
+                await navigator.clipboard.writeText(url);
+              }
+            }}
+            className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 text-slate-900"
+          >
             <Share className="w-5 h-5" />
           </button>
-          <button className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 text-slate-900">
-            <MoreVertical className="w-5 h-5" />
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((o) => !o)}
+              className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 text-slate-900"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-12 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50">
+                <button
+                  onClick={() => { setTitleDraft(list.title); setEditingTitle(true); setMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" /> Rename list
+                </button>
+                <button
+                  onClick={() => { deleteList(id); router.push('/lists'); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete list
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 

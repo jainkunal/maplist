@@ -38,6 +38,7 @@ function CreateMapForm() {
 
     try {
       let places: { name: string; lat: number; lng: number; notes?: string }[] = [];
+      let listTitle = 'New Curated Map';
 
       const gmapsUrl = extractGoogleMapsUrl(text);
       if (gmapsUrl) {
@@ -51,6 +52,7 @@ function CreateMapForm() {
         if (scrapeRes.ok) {
           const data = await scrapeRes.json();
           places = data.places ?? [];
+          if (data.title) listTitle = data.title;
         }
         // Fall through to Gemini if scraper fails or returns nothing
       }
@@ -74,7 +76,7 @@ function CreateMapForm() {
 
       // Create a new list
       const listId = addList({
-        title: 'New Curated Map',
+        title: listTitle,
         description: 'Generated from text',
         places: [],
         isPublic: false,
