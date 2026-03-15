@@ -91,17 +91,8 @@ export default function ExplorePage() {
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-slate-50 pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-50 flex items-center bg-white/80 backdrop-blur-md px-4 py-4 justify-between border-b border-slate-200">
-        <div className="flex items-center gap-2">
-          <Map className="text-blue-600 w-8 h-8" />
-          <h1 className="text-slate-900 text-xl font-extrabold tracking-tight">MapLists</h1>
-        </div>
-        <Link
-          href="/lists"
-          className="text-blue-600 text-sm font-bold hover:underline"
-        >
-          My Lists
-        </Link>
+      <header className="sticky top-0 z-50 flex items-center h-14 bg-white/90 backdrop-blur-md px-4 justify-between border-b border-slate-100">
+        <h1 className="text-slate-900 text-xl font-bold tracking-tight">Explore</h1>
       </header>
 
       {/* Search Section */}

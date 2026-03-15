@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Use class-based dark mode so dark: variants only activate when .dark is on <html>.
+   Since we never apply .dark, the whole app stays consistently in light mode. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary: #1152d4;
   --color-background-light: #f6f6f8;

@@ -43,6 +43,14 @@ export default function PublicListPage() {
       .catch(() => { setNotFound(true); setLoading(false); });
   }, [id]);
 
+  useEffect(() => {
+    if (!session) return;
+    fetch(`/api/lists/${id}/save`)
+      .then((r) => r.json())
+      .then((data) => { if (data.isSaved != null) setSaved(data.isSaved); })
+      .catch(() => {});
+  }, [id, session]);
+
   const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -54,12 +62,19 @@ export default function PublicListPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!session) {
       router.push(`/login?callbackUrl=/p/${id}`);
       return;
     }
-    setSaved((s) => !s);
+    const next = !saved;
+    setSaved(next);
+    try {
+      const res = await fetch(`/api/lists/${id}/save`, { method: next ? 'POST' : 'DELETE' });
+      if (!res.ok) setSaved(!next);
+    } catch {
+      setSaved(!next);
+    }
   };
 
   if (loading) {
