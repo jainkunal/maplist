@@ -1,7 +1,8 @@
 'use client';
 
-import { Settings, ChevronRight, User, Bell, Link as LinkIcon, Lock, LogOut } from 'lucide-react';
+import { Settings, ChevronRight, User, Bell, Link as LinkIcon, Lock, LogOut, DollarSign, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useMapStore } from '@/store/useMapStore';
 import { useSession, signOut } from '@/lib/auth-client';
@@ -12,6 +13,8 @@ export default function ProfilePage() {
   const { data: session } = useSession();
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
+  const [monetizationStatus, setMonetizationStatus] = useState('none');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const user = session?.user;
 
@@ -23,6 +26,13 @@ export default function ProfilePage() {
         setFollowers(data.followers ?? 0);
         setFollowing(data.following ?? 0);
       })
+      .catch(() => {});
+    fetch('/api/monetization/status')
+      .then((r) => r.json())
+      .then((d) => setMonetizationStatus(d.status ?? 'none'))
+      .catch(() => {});
+    fetch('/api/admin/stats')
+      .then((r) => { if (r.ok) setIsAdmin(true); })
       .catch(() => {});
   }, [user?.id]);
 
@@ -130,6 +140,28 @@ export default function ProfilePage() {
               </div>
               <ChevronRight className="w-5 h-5 text-slate-400" />
             </button>
+            {monetizationStatus === 'approved' && (
+              <Link href="/earnings" className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-green-50 flex items-center justify-center text-green-600">
+                    <DollarSign className="w-5 h-5" />
+                  </div>
+                  <span className="font-medium">Earnings</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-400" />
+              </Link>
+            )}
+            {isAdmin && (
+              <Link href="/admin" className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="size-9 rounded-lg bg-red-50 flex items-center justify-center text-red-500">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <span className="font-medium">Admin Dashboard</span>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-400" />
+              </Link>
+            )}
           </div>
 
           <div className="mt-4 px-2">

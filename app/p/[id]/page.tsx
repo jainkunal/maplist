@@ -32,6 +32,9 @@ export default function PublicListPage() {
   const { canInstall, handleInstall, handleDismiss } = usePWA();
   const { toast } = useToast();
   const [savingInProgress, setSavingInProgress] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   // Reviews state
   type Review = { id: string; rating: number; comment: string; visited: boolean; createdAt: string; user: { name: string; image: string | null } };
@@ -53,6 +56,41 @@ export default function PublicListPage() {
       })
       .catch(() => { setNotFound(true); setLoading(false); });
   }, [id]);
+
+  useEffect(() => {
+    if (sessionPending) return;
+    if (!session) { setCheckingAccess(false); return; }
+    fetch(`/api/lists/${id}/access`)
+      .then((r) => r.json())
+      .then((data) => { setHasAccess(data.hasAccess ?? false); })
+      .catch(() => {})
+      .finally(() => setCheckingAccess(false));
+  }, [id, session, sessionPending]);
+
+  const handleCheckout = async () => {
+    if (!session) {
+      router.push(`/login?callbackUrl=/p/${id}`);
+      return;
+    }
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listId: id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      } else {
+        toast(data.error ?? 'Failed to start checkout', 'error');
+        setCheckoutLoading(false);
+      }
+    } catch {
+      toast('Something went wrong', 'error');
+      setCheckoutLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!session) return;
@@ -177,8 +215,8 @@ export default function PublicListPage() {
   const authorName = list.user?.name ?? 'Anonymous';
   const authorInitial = authorName.charAt(0).toUpperCase();
 
-  // ─── Premium layout ───────────────────────────────────────────────────────
-  if (list.isPremium) {
+  // ─── Premium layout (paywall — only shown when user does NOT have access) ──
+  if (list.isPremium && !hasAccess && !checkingAccess) {
     return (
       <div className="relative flex min-h-screen w-full flex-col bg-slate-50 dark:bg-[#101622] overflow-x-hidden"
         style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
@@ -306,8 +344,12 @@ export default function PublicListPage() {
                 ))}
               </div>
 
-              <button className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white rounded-xl font-bold text-base transition-all shadow-lg shadow-blue-600/25">
-                Get Access for ${list.premiumPrice?.toFixed(2) ?? '—'}
+              <button
+                onClick={handleCheckout}
+                disabled={checkoutLoading}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-[0.98] disabled:opacity-60 text-white rounded-xl font-bold text-base transition-all shadow-lg shadow-blue-600/25"
+              >
+                {checkoutLoading ? 'Loading...' : `Get Access for $${list.premiumPrice?.toFixed(2) ?? '—'}`}
               </button>
               <p className="text-center text-xs text-slate-400 mt-3">
                 Secure payment · No subscription
@@ -343,8 +385,12 @@ export default function PublicListPage() {
           className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 z-50"
           style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         >
-          <button className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-base shadow-lg shadow-blue-600/20 transition-all">
-            Unlock Full Map — ${list.premiumPrice?.toFixed(2) ?? '—'}
+          <button
+            onClick={handleCheckout}
+            disabled={checkoutLoading}
+            className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold text-base shadow-lg shadow-blue-600/20 transition-all"
+          >
+            {checkoutLoading ? 'Loading...' : `Unlock Full Map — $${list.premiumPrice?.toFixed(2) ?? '—'}`}
           </button>
         </div>
       </div>

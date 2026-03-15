@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { getDodo } from '@/lib/dodo';
 
 async function getUser(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -45,6 +46,41 @@ export async function PUT(
   if (existing.userId !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await req.json();
+
+  // When enabling premium, verify monetization approval and create Dodo product
+  let dodoProductId = existing.dodoProductId;
+  if (body.isPremium === true) {
+    const creator = await prisma.user.findUnique({ where: { id: user.id }, select: { monetizationStatus: true } });
+    if (creator?.monetizationStatus !== 'approved') {
+      return NextResponse.json({ error: 'Monetization not approved' }, { status: 403 });
+    }
+
+    const priceInCents = Math.round((body.premiumPrice ?? existing.premiumPrice ?? 0) * 100);
+    const productName = body.title ?? existing.title;
+
+    // Create new product if none exists or if price changed
+    const existingPriceCents = existing.premiumPrice ? Math.round(existing.premiumPrice * 100) : 0;
+    if (!dodoProductId || priceInCents !== existingPriceCents) {
+      try {
+        const product = await getDodo().products.create({
+          name: productName,
+          price: {
+            type: 'one_time_price',
+            price: priceInCents,
+            currency: 'USD',
+            discount: 0,
+            purchasing_power_parity: false,
+          },
+          tax_category: 'digital_products',
+        });
+        dodoProductId = product.product_id;
+      } catch (err) {
+        console.error('Failed to create Dodo product:', err);
+        return NextResponse.json({ error: 'Failed to create payment product' }, { status: 500 });
+      }
+    }
+  }
+
   const list = await prisma.list.update({
     where: { id },
     data: {
@@ -55,6 +91,7 @@ export async function PUT(
       ...(body.premiumPrice !== undefined && { premiumPrice: body.premiumPrice }),
       ...(body.premiumDescription !== undefined && { premiumDescription: body.premiumDescription }),
       ...(body.thumbnailUrl !== undefined && { thumbnailUrl: body.thumbnailUrl }),
+      ...(dodoProductId !== existing.dodoProductId && { dodoProductId }),
     },
     include: { places: { orderBy: { order: 'asc' } } },
   });

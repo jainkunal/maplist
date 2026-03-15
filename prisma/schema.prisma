@@ -8,20 +8,24 @@ datasource db {
 }
 
 model User {
-  id            String      @id @default(uuid())
-  name          String
-  email         String      @unique
-  emailVerified Boolean     @default(false)
-  image         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  sessions      Session[]
-  accounts      Account[]
-  lists         List[]
-  followers     Follow[]      @relation("Followers")
-  following     Follow[]      @relation("Following")
-  savedLists    SavedList[]
-  placeReviews  PlaceReview[]
+  id                  String      @id @default(uuid())
+  name                String
+  email               String      @unique
+  emailVerified       Boolean     @default(false)
+  image               String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  monetizationStatus  String      @default("none")
+  isAdmin             Boolean     @default(false)
+  sessions            Session[]
+  accounts            Account[]
+  lists               List[]
+  followers           Follow[]      @relation("Followers")
+  following           Follow[]      @relation("Following")
+  savedLists          SavedList[]
+  placeReviews        PlaceReview[]
+  purchases           Purchase[]
+  payouts             Payout[]
 }
 
 model Follow {
@@ -85,7 +89,9 @@ model List {
   places             Place[]
   userId             String?
   user               User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  dodoProductId      String?
   savedBy            SavedList[]
+  purchases          Purchase[]
 }
 
 model SavedList {
@@ -135,4 +141,29 @@ model PlaceReview {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([placeId, userId])
+}
+
+model Purchase {
+  id            String   @id @default(uuid())
+  userId        String
+  listId        String
+  paymentId     String   @unique
+  amount        Int
+  currency      String   @default("USD")
+  creatorShare  Int
+  platformShare Int
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  list          List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listId])
+}
+
+model Payout {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Int
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

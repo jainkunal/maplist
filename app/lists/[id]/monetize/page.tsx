@@ -28,6 +28,17 @@ export default function MonetizePage() {
   const urlInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [monetizationStatus, setMonetizationStatus] = useState<string | null>(null);
+  const [statusLoading, setStatusLoading] = useState(true);
+  const [requesting, setRequesting] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/monetization/status')
+      .then((r) => r.json())
+      .then((d) => setMonetizationStatus(d.status ?? 'none'))
+      .catch(() => setMonetizationStatus('none'))
+      .finally(() => setStatusLoading(false));
+  }, []);
 
   useEffect(() => {
     if (list) {
@@ -49,6 +60,69 @@ export default function MonetizePage() {
         <button onClick={() => router.push('/lists')} className="mt-4 text-blue-600 hover:underline text-sm">
           Go back to lists
         </button>
+      </div>
+    );
+  }
+
+  const handleRequestMonetization = async () => {
+    setRequesting(true);
+    try {
+      const res = await fetch('/api/monetization/request', { method: 'POST' });
+      if (res.ok) setMonetizationStatus('pending');
+    } catch { /* ignore */ }
+    setRequesting(false);
+  };
+
+  if (statusLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#101622]">
+        <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (monetizationStatus !== 'approved') {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#101622] text-slate-900 dark:text-slate-100">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#101622] sticky top-0 z-50">
+          <button onClick={() => router.back()} className="flex items-center justify-center size-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-700 dark:text-slate-300">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-lg font-bold text-center flex-1">Monetize Your List</h2>
+          <div className="size-10" />
+        </div>
+        <main className="max-w-md mx-auto w-full px-4 py-16 text-center space-y-6">
+          {monetizationStatus === 'pending' ? (
+            <>
+              <div className="flex justify-center">
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold bg-yellow-100 text-yellow-800">
+                  Pending Review
+                </span>
+              </div>
+              <h2 className="text-2xl font-bold">Your request is under review</h2>
+              <p className="text-slate-500 leading-relaxed">
+                We&apos;re reviewing your monetization request. You&apos;ll be able to set up paid lists once approved.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold">Request Monetization Access</h2>
+              <p className="text-slate-500 leading-relaxed">
+                To start earning from your curated maps, you need to be approved for monetization. This helps us ensure quality and comply with payment regulations.
+              </p>
+              <button
+                onClick={handleRequestMonetization}
+                disabled={requesting}
+                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl font-bold text-base transition-all shadow-lg shadow-blue-600/20"
+              >
+                {requesting ? 'Submitting...' : 'Request Access'}
+              </button>
+              {monetizationStatus === 'rejected' && (
+                <p className="text-sm text-red-500">Your previous request was not approved. You can submit a new request.</p>
+              )}
+            </>
+          )}
+        </main>
       </div>
     );
   }
