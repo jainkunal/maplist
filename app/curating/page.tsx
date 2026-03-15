@@ -183,6 +183,7 @@ export default function CuratingPage() {
           if (!extractRes.ok) throw new CuratingError('Our AI couldn\'t read this Instagram post. The post may be private. Try pasting the caption text directly.', 'input');
           const data = await extractRes.json();
           rawPlaces = data.places ?? [];
+          if (data.listTitle) title = data.listTitle;
         }
       }
 

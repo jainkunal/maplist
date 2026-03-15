@@ -40,6 +40,25 @@ async function fetchImageAsBase64(url: string): Promise<{ mimeType: string; data
   }
 }
 
+async function generateListTitle(captionContext: string, placeNames: string[]): Promise<string | null> {
+  try {
+    const placesPreview = placeNames.slice(0, 6).join(', ');
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: `Given this Instagram post caption and the places found in it, suggest a short, catchy title for a saved map list. Max 6 words, no quotes, no punctuation at the end.
+
+Caption: ${captionContext.slice(0, 600)}
+Places: ${placesPreview}
+
+Reply with just the title.`,
+    });
+    const title = response.text?.trim().replace(/^["']|["']$/g, '').trim();
+    return title || null;
+  } catch {
+    return null;
+  }
+}
+
 async function extractPlacesFromImages(imageUrls: string[], captionContext?: string): Promise<{ name: string; notes?: string; locationContext?: string }[]> {
   const imageDataList = await Promise.all(imageUrls.slice(0, 10).map(fetchImageAsBase64));
   const validImages = imageDataList.filter(Boolean) as { mimeType: string; data: string }[];
@@ -95,7 +114,10 @@ export async function POST(req: Request) {
           if (missingCtx > 0) {
             console.warn(`[extract-places] ${missingCtx} vision places have no locationContext`);
           }
-          return NextResponse.json({ places: visionPlaces });
+          const listTitle = captionContext
+            ? await generateListTitle(captionContext, visionPlaces.map(p => p.name))
+            : null;
+          return NextResponse.json({ places: visionPlaces, listTitle });
         }
         console.log('[extract-places] Vision found no places, falling through to text extraction');
       } catch (err: any) {
@@ -134,7 +156,10 @@ export async function POST(req: Request) {
     });
 
     const places = JSON.parse(response.text || '[]');
-    return NextResponse.json({ places });
+    const listTitle = captionContext && places.length > 0
+      ? await generateListTitle(captionContext, places.map((p: { name: string }) => p.name))
+      : null;
+    return NextResponse.json({ places, listTitle });
   } catch (error) {
     console.error('Error extracting places:', error);
     return NextResponse.json({ error: 'Failed to extract places' }, { status: 500 });
