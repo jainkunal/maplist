@@ -60,7 +60,13 @@ export default function ListsPage() {
           {lists.map((list) => (
             <Link href={`/lists/${list.id}`} key={list.id} className="group flex flex-col bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 transition-all hover:shadow-md">
               <div className="relative aspect-video overflow-hidden bg-slate-100 flex items-center justify-center">
-                {list.places.some((p) => p.lat !== 0 && p.lng !== 0) ? (
+                {list.isPremium && list.thumbnailUrl ? (
+                  <img
+                    src={list.thumbnailUrl}
+                    alt={list.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : list.places.some((p) => p.lat !== 0 && p.lng !== 0) ? (
                   <MiniMap places={list.places} />
                 ) : (
                   <MapIcon className="w-12 h-12 text-slate-400" />

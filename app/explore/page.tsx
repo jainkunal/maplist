@@ -18,6 +18,7 @@ type ExploreList = {
   createdAt: string;
   isPremium: boolean;
   premiumPrice: number | null;
+  premiumDescription: string;
   places: ExplorePlace[];
   user?: { name?: string | null; image?: string | null } | null;
 };
@@ -201,7 +202,13 @@ export default function ExplorePage() {
                   >
                     {/* Thumbnail / Mini Map */}
                     <div className="relative aspect-video overflow-hidden bg-slate-100 flex items-center justify-center">
-                      {validPlaces.length > 0 ? (
+                      {list.isPremium && list.thumbnailUrl ? (
+                        <img
+                          src={list.thumbnailUrl}
+                          alt={list.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : validPlaces.length > 0 ? (
                         <MiniMap places={validPlaces} />
                       ) : (
                         <MapPin className="w-10 h-10 text-slate-300" />
