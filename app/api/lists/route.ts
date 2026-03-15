@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { generateThumbnailUrl } from '@/lib/thumbnail';
 
 async function getUser(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
@@ -25,27 +26,30 @@ export async function POST(req: NextRequest) {
 
   const { title, description, isPublic, places } = await req.json();
 
+  const placesData = (places ?? []).map(
+    (p: { name: string; lat: number; lng: number; tags?: string[]; notes?: string; recommendedBy?: string; visited?: boolean; googlePlaceId?: string }, i: number) => ({
+      name: p.name,
+      lat: p.lat,
+      lng: p.lng,
+      tags: p.tags ?? [],
+      notes: p.notes ?? '',
+      recommendedBy: p.recommendedBy ?? '',
+      visited: p.visited ?? false,
+      googlePlaceId: p.googlePlaceId ?? '',
+      order: i,
+    })
+  );
+
+  const thumbnailUrl = generateThumbnailUrl(placesData);
+
   const list = await prisma.list.create({
     data: {
       title,
       description: description ?? '',
       isPublic: isPublic ?? false,
       userId: user.id,
-      places: {
-        create: (places ?? []).map(
-          (p: { name: string; lat: number; lng: number; tags?: string[]; notes?: string; recommendedBy?: string; visited?: boolean; googlePlaceId?: string }, i: number) => ({
-            name: p.name,
-            lat: p.lat,
-            lng: p.lng,
-            tags: p.tags ?? [],
-            notes: p.notes ?? '',
-            recommendedBy: p.recommendedBy ?? '',
-            visited: p.visited ?? false,
-            googlePlaceId: p.googlePlaceId ?? '',
-            order: i,
-          })
-        ),
-      },
+      thumbnailUrl,
+      places: { create: placesData },
     },
     include: { places: { orderBy: { order: 'asc' } } },
   });

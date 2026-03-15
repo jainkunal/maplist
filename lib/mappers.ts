@@ -20,6 +20,7 @@ type DbList = {
   description: string;
   isPublic: boolean;
   createdAt: string | Date;
+  thumbnailUrl?: string | null;
   places: DbPlace[];
 };
 
@@ -30,6 +31,7 @@ export function dbListToMapList(list: DbList): MapList {
     description: list.description,
     isPublic: list.isPublic,
     createdAt: new Date(list.createdAt).getTime(),
+    thumbnailUrl: list.thumbnailUrl,
     places: list.places.map(dbPlaceToPlace),
   };
 }

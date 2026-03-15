@@ -19,6 +19,7 @@ export interface MapList {
   places: Place[];
   isPublic: boolean;
   createdAt: number;
+  thumbnailUrl?: string | null;
 }
 
 interface MapStore {

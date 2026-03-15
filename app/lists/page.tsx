@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useMapStore } from '@/store/useMapStore';
 import { dbListToMapList } from '@/lib/mappers';
 import Link from 'next/link';
 import { Map as MapIcon, Search, Share, Lock, Globe, Plus } from 'lucide-react';
+
+const MiniMap = dynamic(() => import('@/components/MiniMap'), { ssr: false });
 
 export default function ListsPage() {
   const lists = useMapStore((state) => state.lists);
@@ -56,8 +59,12 @@ export default function ListsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {lists.map((list) => (
             <Link href={`/lists/${list.id}`} key={list.id} className="group flex flex-col bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 transition-all hover:shadow-md">
-              <div className="relative aspect-video overflow-hidden bg-slate-200 flex items-center justify-center">
-                <MapIcon className="w-12 h-12 text-slate-400" />
+              <div className="relative aspect-video overflow-hidden bg-slate-100 flex items-center justify-center">
+                {list.places.some((p) => p.lat !== 0 && p.lng !== 0) ? (
+                  <MiniMap places={list.places} />
+                ) : (
+                  <MapIcon className="w-12 h-12 text-slate-400" />
+                )}
                 <div className="absolute top-3 right-3 flex gap-2">
                   <span className="bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
                     {list.isPublic ? 'Public' : 'Private'}

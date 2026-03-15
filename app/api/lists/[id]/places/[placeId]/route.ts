@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { generateThumbnailUrl } from '@/lib/thumbnail';
 
 export async function PUT(
   req: NextRequest,
@@ -26,7 +27,13 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; placeId: string }> }
 ) {
-  const { placeId } = await params;
+  const { id: listId, placeId } = await params;
   await prisma.place.delete({ where: { id: placeId } });
+
+  // Regenerate thumbnail with remaining places
+  const remaining = await prisma.place.findMany({ where: { listId } });
+  const thumbnailUrl = generateThumbnailUrl(remaining);
+  await prisma.list.update({ where: { id: listId }, data: { thumbnailUrl } });
+
   return NextResponse.json({ success: true });
 }

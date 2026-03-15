@@ -118,7 +118,7 @@ export default function CuratingPage() {
 
   async function run(text: string) {
     try {
-      let rawPlaces: { name: string; lat: number; lng: number; notes?: string; place_id?: string }[] = [];
+      let rawPlaces: { name: string; lat: number; lng: number; notes?: string; place_id?: string; locationContext?: string }[] = [];
       let title = 'New Curated Map';
 
       // --- Step 1: Parsing ---
@@ -226,7 +226,7 @@ export default function CuratingPage() {
             const geocodeRes = await fetch('/api/geocode', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name: place.name }),
+              body: JSON.stringify({ name: place.name, context: place.locationContext }),
             });
             const coords = await geocodeRes.json();
             if (coords.lat || coords.lng) {
