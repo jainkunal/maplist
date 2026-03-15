@@ -35,10 +35,8 @@ export default function ProfilePage() {
   return (
     <div className="relative flex flex-col overflow-x-hidden bg-slate-50 pb-6">
       {/* Header */}
-      <header className="sticky top-0 z-50 flex items-center bg-white/80 backdrop-blur-md p-4 justify-between border-b border-slate-200">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold tracking-tight">Curator Profile</h1>
-        </div>
+      <header className="sticky top-0 z-50 flex items-center h-14 bg-white/90 backdrop-blur-md px-4 justify-between border-b border-slate-100">
+        <h1 className="text-xl font-bold tracking-tight">Profile</h1>
         <button className="flex items-center justify-center rounded-full p-2 hover:bg-slate-100 transition-colors">
           <Settings className="w-6 h-6 text-slate-700" />
         </button>
