@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useMapStore, Place } from '@/store/useMapStore';
 import { dbListToMapList } from '@/lib/mappers';
-import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X, Trash2, Pencil } from 'lucide-react';
+import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X, Trash2, Pencil, Globe, Lock } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useMemo, useRef, useEffect } from 'react';
 
@@ -107,6 +107,25 @@ export default function ListDetailPage() {
     setEditingPlaceId(null);
   };
 
+  const handleTogglePublish = () => {
+    const isPublic = !list.isPublic;
+    updateList(id, { isPublic });
+    fetch(`/api/lists/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPublic }),
+    });
+    setMenuOpen(false);
+    if (isPublic) {
+      const url = `${window.location.origin}/p/${id}`;
+      if (navigator.share) {
+        navigator.share({ title: list.title, url });
+      } else {
+        navigator.clipboard.writeText(url);
+      }
+    }
+  };
+
   const handleRenameList = (title: string) => {
     updateList(id, { title });
     fetch(`/api/lists/${id}`, {
@@ -153,13 +172,22 @@ export default function ListDetailPage() {
             ) : (
               <h1 className="text-slate-900 text-lg font-bold leading-tight tracking-tight truncate max-w-[160px] xs:max-w-[200px] sm:max-w-xs">{list.title}</h1>
             )}
-            <p className="text-xs text-slate-500">{list.places.length} places</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-slate-500">{list.places.length} places</p>
+              {list.isPublic && (
+                <span className="flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">
+                  <Globe className="w-2.5 h-2.5" /> Public
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={async () => {
-              const url = window.location.href;
+              const url = list.isPublic
+                ? `${window.location.origin}/p/${id}`
+                : window.location.href;
               if (navigator.share) {
                 await navigator.share({ title: list.title, url });
               } else {
@@ -178,12 +206,22 @@ export default function ListDetailPage() {
               <MoreVertical className="w-5 h-5" />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-12 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50">
+              <div className="absolute right-0 top-12 w-52 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-50">
                 <button
                   onClick={() => { setTitleDraft(list.title); setEditingTitle(true); setMenuOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                 >
                   <Pencil className="w-4 h-4" /> Rename list
+                </button>
+                <button
+                  onClick={handleTogglePublish}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  {list.isPublic ? (
+                    <><Lock className="w-4 h-4" /> Make private</>
+                  ) : (
+                    <><Globe className="w-4 h-4" /> Publish list</>
+                  )}
                 </button>
                 <button
                   onClick={handleDeleteList}
