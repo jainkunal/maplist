@@ -16,7 +16,7 @@ export async function GET(
     where: { id },
     include: {
       places: { orderBy: { order: 'asc' } },
-      user: { select: { name: true, image: true } },
+      user: { select: { id: true, name: true, image: true } },
     },
   });
   if (!list) return NextResponse.json({ error: 'Not found' }, { status: 404 });

@@ -2,6 +2,7 @@
 
 import { Settings, ChevronRight, User, Bell, Link as LinkIcon, Lock, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useMapStore } from '@/store/useMapStore';
 import { useSession, signOut } from '@/lib/auth-client';
 
@@ -9,8 +10,21 @@ export default function ProfilePage() {
   const router = useRouter();
   const lists = useMapStore((state) => state.lists);
   const { data: session } = useSession();
+  const [followers, setFollowers] = useState(0);
+  const [following, setFollowing] = useState(0);
 
   const user = session?.user;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    fetch(`/api/users/${user.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setFollowers(data.followers ?? 0);
+        setFollowing(data.following ?? 0);
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   async function handleSignOut() {
     await signOut();
@@ -59,12 +73,12 @@ export default function ProfilePage() {
         {/* Stats */}
         <div className="flex justify-center gap-8 px-6 py-4 border-y border-slate-200 bg-white">
           <div className="flex flex-col items-center">
-            <span className="text-xl font-bold">0</span>
+            <span className="text-xl font-bold">{followers}</span>
             <span className="text-xs text-slate-500 uppercase tracking-wider">Followers</span>
           </div>
           <div className="h-8 w-px bg-slate-200"></div>
           <div className="flex flex-col items-center">
-            <span className="text-xl font-bold">0</span>
+            <span className="text-xl font-bold">{following}</span>
             <span className="text-xs text-slate-500 uppercase tracking-wider">Following</span>
           </div>
           <div className="h-8 w-px bg-slate-200"></div>

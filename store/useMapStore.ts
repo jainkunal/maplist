@@ -24,7 +24,7 @@ export interface MapList {
   premiumDescription: string;
   createdAt: number;
   thumbnailUrl?: string | null;
-  user?: { name: string | null; image: string | null } | null;
+  user?: { id: string; name: string | null; image: string | null } | null;
 }
 
 interface MapStore {

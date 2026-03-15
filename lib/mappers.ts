@@ -27,7 +27,7 @@ type DbList = {
   createdAt: string | Date;
   thumbnailUrl?: string | null;
   places: DbPlace[];
-  user?: { name: string | null; image: string | null } | null;
+  user?: { id: string; name: string | null; image: string | null } | null;
 };
 
 export function dbListToMapList(list: DbList): MapList {

@@ -10,6 +10,7 @@ import { Share, Bookmark, MapPin, Navigation, Map, List, User, BookmarkCheck, Sh
 import { usePWA } from '../../components/PWAContext';
 import { dbListToMapList } from '@/lib/mappers';
 import type { MapList } from '@/store/useMapStore';
+import FollowButton from '@/components/FollowButton';
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
   ssr: false,
@@ -150,8 +151,8 @@ export default function PublicListPage() {
 
         {/* Author Info */}
         <div className="flex p-4">
-          <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-            <div className="flex gap-4 items-center">
+          <div className="flex w-full items-center justify-between gap-4">
+            <div className="flex gap-4 items-center min-w-0">
               {list.user?.image ? (
                 <img
                   src={list.user.image}
@@ -163,8 +164,8 @@ export default function PublicListPage() {
                   {authorInitial}
                 </div>
               )}
-              <div className="flex flex-col justify-center">
-                <p className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em]">
+              <div className="flex flex-col justify-center min-w-0">
+                <p className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] truncate">
                   Curated by {authorName}
                 </p>
                 <p className="text-slate-500 dark:text-slate-400 text-sm font-normal">
@@ -172,12 +173,9 @@ export default function PublicListPage() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <div className="flex items-center gap-1 text-blue-600 bg-blue-600/10 px-3 py-1 rounded-full text-sm font-semibold">
-                <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                <span>Premium List</span>
-              </div>
-            </div>
+            {isAuthenticated && list.user?.id && session?.user.id !== list.user.id && (
+              <FollowButton userId={list.user.id} />
+            )}
           </div>
         </div>
 
@@ -321,6 +319,25 @@ export default function PublicListPage() {
               {list.description}
             </p>
           )}
+          {/* Author row */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              {list.user?.image ? (
+                <img src={list.user.image} alt={authorName} className="h-9 w-9 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="h-9 w-9 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                  {authorInitial}
+                </div>
+              )}
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                {authorName}
+              </span>
+            </div>
+            {sessionResolved && isAuthenticated && list.user?.id && session?.user.id !== list.user.id && (
+              <FollowButton userId={list.user.id} />
+            )}
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {list.places.length} {list.places.length === 1 ? 'place' : 'places'} in this list
