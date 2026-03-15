@@ -1,6 +1,7 @@
 {
   "setup": [
-    "npm install\ncp ~/Code/MapList/.env ."
+    "npm install",
+    "cp ~/Code/MapList/.env ."
   ],
   "teardown": []
 }
