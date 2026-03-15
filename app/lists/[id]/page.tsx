@@ -24,6 +24,7 @@ export default function ListDetailPage() {
   const deleteList = useMapStore((state) => state.deleteList);
 
   const list = lists.find((l) => l.id === id);
+  const [fetchLoading, setFetchLoading] = useState(!list);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [editingPlaceId, setEditingPlaceId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{ notes: string; tags: string; recommendedBy: string }>({ notes: '', tags: '', recommendedBy: '' });
@@ -35,6 +36,7 @@ export default function ListDetailPage() {
   // Fetch list from DB on mount if not already in store
   useEffect(() => {
     if (list) return;
+    setFetchLoading(true);
     fetch(`/api/lists/${id}`)
       .then((r) => {
         if (!r.ok) return null;
@@ -42,7 +44,9 @@ export default function ListDetailPage() {
       })
       .then((data) => {
         if (data) setLists([...lists, dbListToMapList(data)]);
-      });
+        setFetchLoading(false);
+      })
+      .catch(() => setFetchLoading(false));
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -62,6 +66,34 @@ export default function ListDetailPage() {
   }, [list]);
 
   if (!list) {
+    if (fetchLoading) {
+      return (
+        <div className="relative flex flex-col overflow-x-hidden bg-slate-50 pb-6 animate-pulse">
+          <header className="sticky top-0 z-50 flex items-center bg-white/80 backdrop-blur-md p-4 justify-between border-b border-slate-200">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-full bg-slate-200" />
+              <div className="space-y-2">
+                <div className="h-5 w-32 bg-slate-200 rounded" />
+                <div className="h-3 w-16 bg-slate-100 rounded" />
+              </div>
+            </div>
+          </header>
+          <div className="h-[35vh] w-full bg-slate-200" />
+          <main className="flex-1 px-4 py-6 space-y-4 max-w-3xl mx-auto w-full">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 flex gap-4">
+                <div className="w-16 h-16 rounded-lg bg-slate-200 shrink-0" />
+                <div className="flex-1 space-y-3">
+                  <div className="h-5 bg-slate-200 rounded w-1/2" />
+                  <div className="h-3 bg-slate-100 rounded w-3/4" />
+                  <div className="h-3 bg-slate-100 rounded w-1/3" />
+                </div>
+              </div>
+            ))}
+          </main>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
         <h1 className="text-2xl font-bold mb-4">List not found</h1>
@@ -393,7 +425,7 @@ export default function ListDetailPage() {
           </div>
         ))}
 
-        {filteredPlaces.length === 0 && (
+        {!fetchLoading && filteredPlaces.length === 0 && (
           <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-300">
             <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-500 font-medium">No places found.</p>
