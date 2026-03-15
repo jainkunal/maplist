@@ -18,6 +18,7 @@ interface ExtractedPlace {
   lat: number;
   lng: number;
   notes: string;
+  googlePlaceId?: string;
 }
 
 // Carries whether the user can fix the error or it's on us
@@ -90,6 +91,7 @@ export default function CuratingPage() {
           tags: [],
           recommendedBy: '',
           visited: false,
+          googlePlaceId: p.googlePlaceId ?? '',
         })),
       }),
     });
@@ -116,7 +118,7 @@ export default function CuratingPage() {
 
   async function run(text: string) {
     try {
-      let rawPlaces: { name: string; lat: number; lng: number; notes?: string }[] = [];
+      let rawPlaces: { name: string; lat: number; lng: number; notes?: string; place_id?: string }[] = [];
       let title = 'New Curated Map';
 
       // --- Step 1: Parsing ---
@@ -218,7 +220,7 @@ export default function CuratingPage() {
         setProgress(35 + Math.round((done / rawPlaces.length) * 45));
 
         if (place.lat && place.lng) {
-          geocodedPlaces.push({ name: place.name, lat: place.lat, lng: place.lng, notes: place.notes || '' });
+          geocodedPlaces.push({ name: place.name, lat: place.lat, lng: place.lng, notes: place.notes || '', googlePlaceId: place.place_id || '' });
         } else {
           try {
             const geocodeRes = await fetch('/api/geocode', {
