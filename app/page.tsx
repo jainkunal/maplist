@@ -1,7 +1,14 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
+import { auth } from '@/lib/auth';
 
-export default function SplashPage() {
+export default async function SplashPage() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (session) {
+    redirect('/lists');
+  }
   return (
     <div className="relative flex h-screen w-full flex-col bg-background-dark overflow-hidden">
       {/* Full-bleed background image */}
