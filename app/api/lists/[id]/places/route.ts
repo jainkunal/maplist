@@ -19,6 +19,7 @@ export async function POST(
       notes: body.notes ?? '',
       recommendedBy: body.recommendedBy ?? '',
       visited: body.visited ?? false,
+      googlePlaceId: body.googlePlaceId ?? '',
       listId,
       order: count,
     },

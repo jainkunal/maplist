@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       places: {
         create: (places ?? []).map(
-          (p: { name: string; lat: number; lng: number; tags?: string[]; notes?: string; recommendedBy?: string; visited?: boolean }, i: number) => ({
+          (p: { name: string; lat: number; lng: number; tags?: string[]; notes?: string; recommendedBy?: string; visited?: boolean; googlePlaceId?: string }, i: number) => ({
             name: p.name,
             lat: p.lat,
             lng: p.lng,
@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
             notes: p.notes ?? '',
             recommendedBy: p.recommendedBy ?? '',
             visited: p.visited ?? false,
+            googlePlaceId: p.googlePlaceId ?? '',
             order: i,
           })
         ),
