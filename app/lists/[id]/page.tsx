@@ -124,7 +124,7 @@ export default function ListDetailPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-slate-50 pb-24">
+    <div className="relative flex flex-col overflow-x-hidden bg-slate-50 pb-6">
       {/* Header */}
       <header className="sticky top-0 z-50 flex items-center bg-white/80 backdrop-blur-md p-4 justify-between border-b border-slate-200">
         <div className="flex items-center gap-3 min-w-0">
@@ -151,7 +151,7 @@ export default function ListDetailPage() {
                 <button onClick={() => setEditingTitle(false)} className="text-slate-400"><X className="w-4 h-4" /></button>
               </div>
             ) : (
-              <h1 className="text-slate-900 text-lg font-bold leading-tight tracking-tight truncate max-w-[200px]">{list.title}</h1>
+              <h1 className="text-slate-900 text-lg font-bold leading-tight tracking-tight truncate max-w-[160px] xs:max-w-[200px] sm:max-w-xs">{list.title}</h1>
             )}
             <p className="text-xs text-slate-500">{list.places.length} places</p>
           </div>
@@ -264,7 +264,7 @@ export default function ListDetailPage() {
                       <textarea
                         value={editForm.notes}
                         onChange={(e) => setEditForm({...editForm, notes: e.target.value})}
-                        className="w-full mt-1 text-sm rounded-lg border-slate-200 focus:ring-blue-600 focus:border-blue-600"
+                        className="w-full mt-1 text-base rounded-lg border-slate-200 focus:ring-blue-600 focus:border-blue-600"
                         rows={2}
                       />
                     </div>
@@ -274,7 +274,7 @@ export default function ListDetailPage() {
                         type="text"
                         value={editForm.tags}
                         onChange={(e) => setEditForm({...editForm, tags: e.target.value})}
-                        className="w-full mt-1 text-sm rounded-lg border-slate-200 focus:ring-blue-600 focus:border-blue-600"
+                        className="w-full mt-1 text-base rounded-lg border-slate-200 focus:ring-blue-600 focus:border-blue-600"
                         placeholder="e.g. wifi, scenic, cheap"
                       />
                     </div>
@@ -284,7 +284,7 @@ export default function ListDetailPage() {
                         type="text"
                         value={editForm.recommendedBy}
                         onChange={(e) => setEditForm({...editForm, recommendedBy: e.target.value})}
-                        className="w-full mt-1 text-sm rounded-lg border-slate-200 focus:ring-blue-600 focus:border-blue-600"
+                        className="w-full mt-1 text-base rounded-lg border-slate-200 focus:ring-blue-600 focus:border-blue-600"
                         placeholder="e.g. Rahul, Instagram"
                       />
                     </div>

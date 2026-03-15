@@ -170,13 +170,13 @@ function CreateMapForm() {
   };
 
   return (
-    <main className="flex-1 flex flex-col items-center px-6 max-w-2xl mx-auto w-full pb-24 pt-8">
-      <section className="text-center mb-12">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-100 mb-6">
-          <Map className="text-blue-600 w-8 h-8" />
+    <main className="flex-1 flex flex-col items-center px-4 sm:px-6 max-w-2xl mx-auto w-full pb-8 pt-6 sm:pt-8">
+      <section className="text-center mb-6 sm:mb-12">
+        <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-blue-100 mb-4 sm:mb-6">
+          <Map className="text-blue-600 w-7 h-7 sm:w-8 sm:h-8" />
         </div>
-        <h1 className="text-4xl font-bold tracking-tight mb-4">Craft Your Collection</h1>
-        <p className="text-slate-500 text-lg max-w-md mx-auto leading-relaxed">
+        <h1 className="text-2xl sm:text-4xl font-bold tracking-tight mb-2 sm:mb-4">Craft Your Collection</h1>
+        <p className="text-slate-500 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
           Transform your list of destinations into a premium, interactive map experience.
         </p>
       </section>
@@ -193,7 +193,7 @@ function CreateMapForm() {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="relative w-full min-h-[320px] rounded-2xl p-6 bg-white text-lg leading-relaxed focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all border-slate-200 placeholder:text-slate-400"
+              className="relative w-full min-h-[180px] sm:min-h-[320px] rounded-2xl p-4 sm:p-6 bg-white text-base sm:text-lg leading-relaxed focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all border-slate-200 placeholder:text-slate-400"
               placeholder="Paste your list here...&#10;&#10;Example:&#10;1. Eiffel Tower, Paris&#10;2. Louvre Museum&#10;3. Notre Dame Cathedral&#10;4. Sacré-Cœur, Montmartre..."
               disabled={loading}
             />
