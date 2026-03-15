@@ -18,6 +18,18 @@ model User {
   sessions      Session[]
   accounts      Account[]
   lists         List[]
+  followers     Follow[]  @relation("Followers")
+  following     Follow[]  @relation("Following")
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("Following", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
 }
 
 model Session {
