@@ -88,6 +88,7 @@ model Place {
   visited        Boolean  @default(false)
   order          Int      @default(0)
   googlePlaceId  String   @default("")
+  photoUrl       String?
   listId         String
   list           List     @relation(fields: [listId], references: [id], onDelete: Cascade)
 }

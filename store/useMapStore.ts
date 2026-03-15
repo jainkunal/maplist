@@ -10,6 +10,7 @@ export interface Place {
   notes: string;
   recommendedBy: string;
   visited: boolean;
+  photoUrl?: string | null;
 }
 
 export interface MapList {
