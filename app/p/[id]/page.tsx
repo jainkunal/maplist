@@ -181,10 +181,18 @@ export default function PublicListPage() {
               className="group flex flex-col md:flex-row gap-5 p-4 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
             >
               <div className="w-full md:w-40 h-40 rounded-xl overflow-hidden shrink-0 bg-blue-50 dark:bg-slate-800 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-2 text-blue-400">
-                  <MapPin className="w-10 h-10" />
-                  <span className="text-xs font-bold text-blue-500">#{index + 1}</span>
-                </div>
+                {place.photoUrl ? (
+                  <img
+                    src={place.photoUrl}
+                    alt={place.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-2 text-blue-400">
+                    <MapPin className="w-10 h-10" />
+                    <span className="text-xs font-bold text-blue-500">#{index + 1}</span>
+                  </div>
+                )}
               </div>
               <div className="flex-1 flex flex-col justify-between py-1">
                 <div>

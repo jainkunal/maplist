@@ -12,6 +12,8 @@ type DbPlace = {
   visited: boolean;
   order: number;
   listId: string;
+  googlePlaceId?: string;
+  photoUrl?: string | null;
 };
 
 type DbList = {
@@ -46,5 +48,6 @@ export function dbPlaceToPlace(place: DbPlace): Place {
     notes: place.notes,
     recommendedBy: place.recommendedBy,
     visited: place.visited,
+    photoUrl: place.photoUrl,
   };
 }

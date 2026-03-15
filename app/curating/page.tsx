@@ -99,6 +99,10 @@ export default function CuratingPage() {
     if (!createRes.ok) throw new CuratingError('Failed to save the list.', 'system');
     const newList = await createRes.json();
     setLists([...lists, dbListToMapList(newList)]);
+
+    // Kick off photo fetching in the background — don't await, it shouldn't block the user
+    fetch(`/api/lists/${newList.id}/fetch-photos`, { method: 'POST' }).catch(() => {});
+
     return newList.id;
   }
 
