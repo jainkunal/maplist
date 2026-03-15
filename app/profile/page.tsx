@@ -1,11 +1,11 @@
 'use client';
 
-import { Settings, ChevronRight, User, Bell, Link as LinkIcon, Lock, LogOut, DollarSign, Shield } from 'lucide-react';
+import { Settings, ChevronRight, User, Bell, Link as LinkIcon, Lock, LogOut, DollarSign, Shield, X, Check } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useMapStore } from '@/store/useMapStore';
-import { useSession, signOut } from '@/lib/auth-client';
+import { useSession, signOut, authClient } from '@/lib/auth-client';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -15,6 +15,10 @@ export default function ProfilePage() {
   const [following, setFollowing] = useState(0);
   const [monetizationStatus, setMonetizationStatus] = useState('none');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showAccountDetails, setShowAccountDetails] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const user = session?.user;
 
@@ -40,6 +44,19 @@ export default function ProfilePage() {
     await signOut();
     router.push('/login');
     router.refresh();
+  }
+
+  function openEditProfile() {
+    setEditName(user?.name ?? '');
+    setShowEditProfile(true);
+  }
+
+  async function handleSaveProfile() {
+    if (!editName.trim()) return;
+    setSaving(true);
+    await authClient.updateUser({ name: editName.trim() });
+    setSaving(false);
+    setShowEditProfile(false);
   }
 
   return (
@@ -72,7 +89,10 @@ export default function ProfilePage() {
             </p>
           </div>
           <div className="flex gap-4 mt-6 w-full max-w-md">
-            <button className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all">
+            <button
+              onClick={openEditProfile}
+              className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-900 font-bold py-2.5 rounded-lg text-sm transition-all"
+            >
               Edit Profile
             </button>
           </div>
@@ -104,7 +124,10 @@ export default function ProfilePage() {
         {/* Settings Options */}
         <div className="px-4 pb-8">
           <div className="bg-white border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden shadow-sm">
-            <button className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+            <button
+              onClick={() => setShowAccountDetails(true)}
+              className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
+            >
               <div className="flex items-center gap-3">
                 <div className="size-9 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
                   <User className="w-5 h-5" />
@@ -175,6 +198,84 @@ export default function ProfilePage() {
           </div>
         </div>
       </main>
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowEditProfile(false)}>
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold">Edit Profile</h2>
+              <button onClick={() => setShowEditProfile(false)} className="p-1.5 rounded-full hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Display Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Your name"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowEditProfile(false)}
+                className="flex-1 py-2.5 rounded-lg border border-slate-200 text-sm font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveProfile}
+                disabled={saving || !editName.trim()}
+                className="flex-1 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              >
+                {saving ? 'Saving...' : <><Check className="w-4 h-4" /> Save</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Account Details Modal */}
+      {showAccountDetails && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowAccountDetails(false)}>
+          <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold">Account Details</h2>
+              <button onClick={() => setShowAccountDetails(false)} className="p-1.5 rounded-full hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-slate-500">Name</span>
+                  <span className="text-sm font-medium">{user?.name ?? '—'}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-slate-500">Email</span>
+                  <span className="text-sm font-medium">{user?.email ?? '—'}</span>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3">
+                  <span className="text-sm text-slate-500">User ID</span>
+                  <span className="text-sm font-mono text-slate-400 truncate max-w-[160px]">{user?.id ?? '—'}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAccountDetails(false)}
+              className="w-full mt-5 py-2.5 rounded-lg border border-slate-200 text-sm font-medium hover:bg-slate-50 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
