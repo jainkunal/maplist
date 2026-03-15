@@ -22,8 +22,8 @@ function httpGet(url: string): Promise<{ statusCode: number; location: string | 
 }
 
 function tryExtractListId(url: string): string | null {
-  // Format 1: data blob  →  !2s{LIST_ID}!3e3
-  const dataMatch = url.match(/!2s([^!]+)!3e3/);
+  // Format 1: data blob  →  !2s{LIST_ID}!3eN  (N varies: 1, 3, etc.)
+  const dataMatch = url.match(/!2s([^!]+)!3e\d/);
   if (dataMatch) return dataMatch[1];
 
   // Format 2: /maps/placelists/list/{LIST_ID}
