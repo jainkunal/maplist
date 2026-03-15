@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useMapStore } from '@/store/useMapStore';
 import { dbListToMapList } from '@/lib/mappers';
@@ -12,11 +12,16 @@ const MiniMap = dynamic(() => import('@/components/MiniMap'), { ssr: false });
 export default function ListsPage() {
   const lists = useMapStore((state) => state.lists);
   const setLists = useMapStore((state) => state.setLists);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch('/api/lists')
       .then((r) => r.json())
-      .then((data) => setLists(data.map(dbListToMapList)));
+      .then((data) => {
+        setLists(data.map(dbListToMapList));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [setLists]);
 
   return (
@@ -57,7 +62,21 @@ export default function ListsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {lists.map((list) => (
+          {loading && Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex flex-col bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 animate-pulse">
+              <div className="aspect-video bg-slate-200" />
+              <div className="p-4 space-y-3">
+                <div className="h-5 bg-slate-200 rounded w-3/4" />
+                <div className="h-3 bg-slate-100 rounded w-1/2" />
+                <div className="pt-3 border-t border-slate-100 flex justify-between">
+                  <div className="h-3 bg-slate-100 rounded w-1/4" />
+                  <div className="h-3 bg-slate-100 rounded w-1/5" />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {!loading && lists.map((list) => (
             <Link href={`/lists/${list.id}`} key={list.id} className="group flex flex-col bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 transition-all hover:shadow-md">
               <div className="relative aspect-video overflow-hidden bg-slate-100 flex items-center justify-center">
                 {list.isPremium && list.thumbnailUrl ? (
@@ -120,7 +139,7 @@ export default function ListsPage() {
             </Link>
           ))}
 
-          {lists.length === 0 && (
+          {!loading && lists.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-500 bg-white rounded-xl border border-dashed border-slate-300">
               <MapIcon className="w-12 h-12 mb-4 text-slate-300" />
               <p className="text-lg font-medium mb-2">No maps yet</p>
