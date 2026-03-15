@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useMapStore, Place } from '@/store/useMapStore';
 import { dbListToMapList } from '@/lib/mappers';
-import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X, Trash2, Pencil, Globe, Lock } from 'lucide-react';
+import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X, Trash2, Pencil, Globe, Lock, DollarSign } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useMemo, useRef, useEffect } from 'react';
 
@@ -172,11 +172,16 @@ export default function ListDetailPage() {
             ) : (
               <h1 className="text-slate-900 text-lg font-bold leading-tight tracking-tight truncate max-w-[160px] xs:max-w-[200px] sm:max-w-xs">{list.title}</h1>
             )}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <p className="text-xs text-slate-500">{list.places.length} places</p>
               {list.isPublic && (
                 <span className="flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full">
                   <Globe className="w-2.5 h-2.5" /> Public
+                </span>
+              )}
+              {list.isPremium && (
+                <span className="flex items-center gap-1 text-[10px] font-black text-yellow-800 bg-yellow-100 px-1.5 py-0.5 rounded-full">
+                  <DollarSign className="w-2.5 h-2.5" /> ${list.premiumPrice?.toFixed(2)}
                 </span>
               )}
             </div>
@@ -224,6 +229,15 @@ export default function ListDetailPage() {
                   )}
                 </button>
                 <button
+                  onClick={() => { setMenuOpen(false); router.push(`/lists/${id}/monetize`); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <DollarSign className="w-4 h-4" />
+                  {list.isPremium
+                    ? `Edit pricing · $${list.premiumPrice?.toFixed(2) ?? '—'}`
+                    : 'Monetize list'}
+                </button>
+                <button
                   onClick={handleDeleteList}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
                 >
@@ -239,6 +253,29 @@ export default function ListDetailPage() {
       <section className="relative h-[35vh] w-full overflow-hidden z-0 border-b border-slate-200">
         <MapComponent places={filteredPlaces} />
       </section>
+
+      {/* Monetization info bar */}
+      {list.isPremium && (
+        <div className="flex items-center justify-between gap-3 px-4 py-3 bg-yellow-50 border-b border-yellow-200">
+          <div className="flex items-center gap-2 min-w-0">
+            <DollarSign className="w-4 h-4 text-yellow-600 shrink-0" />
+            <span className="text-sm font-bold text-yellow-900">
+              Premium · ${list.premiumPrice?.toFixed(2) ?? '—'}
+            </span>
+            {list.premiumDescription && (
+              <span className="text-xs text-yellow-700 truncate hidden sm:block">
+                · {list.premiumDescription}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => router.push(`/lists/${id}/monetize`)}
+            className="text-xs font-bold text-blue-600 hover:underline shrink-0"
+          >
+            Edit pricing
+          </button>
+        </div>
+      )}
 
       {/* Filter Chips */}
       {allTags.length > 0 && (

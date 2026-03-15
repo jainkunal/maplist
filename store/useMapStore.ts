@@ -19,8 +19,12 @@ export interface MapList {
   description: string;
   places: Place[];
   isPublic: boolean;
+  isPremium: boolean;
+  premiumPrice: number | null;
+  premiumDescription: string;
   createdAt: number;
   thumbnailUrl?: string | null;
+  user?: { name: string | null; image: string | null } | null;
 }
 
 interface MapStore {

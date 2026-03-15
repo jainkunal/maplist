@@ -21,9 +21,13 @@ type DbList = {
   title: string;
   description: string;
   isPublic: boolean;
+  isPremium: boolean;
+  premiumPrice: number | null;
+  premiumDescription: string;
   createdAt: string | Date;
   thumbnailUrl?: string | null;
   places: DbPlace[];
+  user?: { name: string | null; image: string | null } | null;
 };
 
 export function dbListToMapList(list: DbList): MapList {
@@ -32,9 +36,13 @@ export function dbListToMapList(list: DbList): MapList {
     title: list.title,
     description: list.description,
     isPublic: list.isPublic,
+    isPremium: list.isPremium,
+    premiumPrice: list.premiumPrice,
+    premiumDescription: list.premiumDescription,
     createdAt: new Date(list.createdAt).getTime(),
     thumbnailUrl: list.thumbnailUrl,
     places: list.places.map(dbPlaceToPlace),
+    user: list.user,
   };
 }
 

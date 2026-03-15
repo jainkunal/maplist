@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { useMapStore } from '@/store/useMapStore';
 import { dbListToMapList } from '@/lib/mappers';
 import Link from 'next/link';
-import { Map as MapIcon, Search, Share, Lock, Globe, Plus } from 'lucide-react';
+import { Map as MapIcon, Search, Share, Lock, Globe, Plus, DollarSign } from 'lucide-react';
 
 const MiniMap = dynamic(() => import('@/components/MiniMap'), { ssr: false });
 
@@ -65,7 +65,13 @@ export default function ListsPage() {
                 ) : (
                   <MapIcon className="w-12 h-12 text-slate-400" />
                 )}
-                <div className="absolute top-3 right-3 flex gap-2">
+                <div className="absolute top-3 right-3 flex gap-1.5">
+                  {list.isPremium && (
+                    <span className="bg-yellow-400 text-slate-900 text-[10px] font-black px-2 py-1 rounded-full flex items-center gap-1">
+                      <DollarSign className="w-2.5 h-2.5" />
+                      {list.premiumPrice != null ? `$${list.premiumPrice.toFixed(2)}` : 'Paid'}
+                    </span>
+                  )}
                   <span className="bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
                     {list.isPublic ? 'Public' : 'Private'}
                   </span>
@@ -89,8 +95,18 @@ export default function ListsPage() {
 
                 <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center">
                   <div className="flex items-center gap-2 text-xs text-slate-500">
-                    {list.isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                    <span>{list.isPublic ? 'Shared' : 'Only you'}</span>
+                    {list.isPremium ? (
+                      <>
+                        <DollarSign className="w-4 h-4 text-yellow-500" />
+                        <span className="font-semibold text-slate-700">
+                          Monetized · ${list.premiumPrice?.toFixed(2) ?? '—'}
+                        </span>
+                      </>
+                    ) : list.isPublic ? (
+                      <><Globe className="w-4 h-4" /><span>Shared</span></>
+                    ) : (
+                      <><Lock className="w-4 h-4" /><span>Only you</span></>
+                    )}
                   </div>
                   <span className="text-blue-600 font-semibold text-sm hover:underline">View Map</span>
                 </div>

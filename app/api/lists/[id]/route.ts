@@ -14,7 +14,10 @@ export async function GET(
   const { id } = await params;
   const list = await prisma.list.findUnique({
     where: { id },
-    include: { places: { orderBy: { order: 'asc' } } },
+    include: {
+      places: { orderBy: { order: 'asc' } },
+      user: { select: { name: true, image: true } },
+    },
   });
   if (!list) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -48,6 +51,10 @@ export async function PUT(
       ...(body.title !== undefined && { title: body.title }),
       ...(body.description !== undefined && { description: body.description }),
       ...(body.isPublic !== undefined && { isPublic: body.isPublic }),
+      ...(body.isPremium !== undefined && { isPremium: body.isPremium }),
+      ...(body.premiumPrice !== undefined && { premiumPrice: body.premiumPrice }),
+      ...(body.premiumDescription !== undefined && { premiumDescription: body.premiumDescription }),
+      ...(body.thumbnailUrl !== undefined && { thumbnailUrl: body.thumbnailUrl }),
     },
     include: { places: { orderBy: { order: 'asc' } } },
   });
