@@ -1,11 +1,22 @@
 'use client';
 
-import { Settings, Map, Bookmark, Plus, ChevronRight, User, Bell, Link as LinkIcon, Lock, LogOut } from 'lucide-react';
-import Link from 'next/link';
+import { Settings, ChevronRight, User, Bell, Link as LinkIcon, Lock, LogOut } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useMapStore } from '@/store/useMapStore';
+import { useSession, signOut } from '@/lib/auth-client';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const lists = useMapStore((state) => state.lists);
+  const { data: session } = useSession();
+
+  const user = session?.user;
+
+  async function handleSignOut() {
+    await signOut();
+    router.push('/login');
+    router.refresh();
+  }
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-slate-50 pb-24">
@@ -24,13 +35,18 @@ export default function ProfilePage() {
         <div className="flex p-6 flex-col items-center">
           <div className="relative group">
             <div className="bg-slate-200 rounded-full h-32 w-32 ring-4 ring-blue-100 flex items-center justify-center overflow-hidden">
-              <User className="w-16 h-16 text-slate-400" />
+              {user?.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.image} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-16 h-16 text-slate-400" />
+              )}
             </div>
           </div>
           <div className="mt-4 text-center">
-            <h2 className="text-2xl font-bold leading-tight">Traveler</h2>
+            <h2 className="text-2xl font-bold leading-tight">{user?.name ?? 'Traveler'}</h2>
             <p className="text-slate-500 text-sm mt-1 max-w-sm">
-              Exploring the world one map at a time.
+              {user?.email ?? 'Exploring the world one map at a time.'}
             </p>
           </div>
           <div className="flex gap-4 mt-6 w-full max-w-md">
@@ -105,7 +121,10 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-4 px-2">
-            <button className="w-full flex items-center gap-2 text-red-500 font-medium p-2 text-sm hover:bg-red-50 rounded-lg transition-colors">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center gap-2 text-red-500 font-medium p-2 text-sm hover:bg-red-50 rounded-lg transition-colors"
+            >
               <LogOut className="w-4 h-4" />
               Sign Out
             </button>

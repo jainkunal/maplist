@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { auth } from '@/lib/auth';
 
-export async function GET() {
+async function getUser(req: NextRequest) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  return session?.user ?? null;
+}
+
+export async function GET(req: NextRequest) {
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const lists = await prisma.list.findMany({
+    where: { userId: user.id },
     include: { places: { orderBy: { order: 'asc' } } },
     orderBy: { createdAt: 'desc' },
   });
@@ -10,6 +20,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { title, description, isPublic, places } = await req.json();
 
   const list = await prisma.list.create({
@@ -17,6 +30,7 @@ export async function POST(req: NextRequest) {
       title,
       description: description ?? '',
       isPublic: isPublic ?? false,
+      userId: user.id,
       places: {
         create: (places ?? []).map(
           (p: { name: string; lat: number; lng: number; tags?: string[]; notes?: string; recommendedBy?: string; visited?: boolean }, i: number) => ({
