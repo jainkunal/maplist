@@ -44,14 +44,9 @@ export default function ListsPage() {
 
   return (
     <div className="bg-slate-50 pb-6">
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
-        <div className="flex items-center justify-between p-4 max-w-5xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg text-white">
-              <MapIcon className="w-6 h-6" />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight">My Lists</h1>
-          </div>
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100">
+        <div className="flex items-center h-14 px-4 max-w-5xl mx-auto">
+          <h1 className="text-xl font-bold tracking-tight">My Lists</h1>
         </div>
 
         <div className="flex border-b border-slate-200 px-4 max-w-5xl mx-auto">
