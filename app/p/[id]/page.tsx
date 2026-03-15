@@ -1,11 +1,13 @@
 'use client';
 
+import React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useSession } from '@/lib/auth-client';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Share, Bookmark, MapPin, Navigation, Map, List, User, BookmarkCheck } from 'lucide-react';
+import { Share, Bookmark, MapPin, Navigation, Map, List, User, BookmarkCheck, Share2, Download } from 'lucide-react';
+import { usePWA } from '../../components/PWAContext';
 import { dbListToMapList } from '@/lib/mappers';
 import type { MapList } from '@/store/useMapStore';
 
@@ -25,6 +27,7 @@ export default function PublicListPage() {
   const [notFound, setNotFound] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const { canInstall, handleInstall, handleDismiss } = usePWA();
 
   useEffect(() => {
     fetch(`/api/lists/${id}`)
@@ -176,10 +179,44 @@ export default function PublicListPage() {
           </h3>
 
           {list.places.map((place, index) => (
-            <article
-              key={place.id}
-              className="group flex flex-col md:flex-row gap-5 p-4 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
-            >
+            <React.Fragment key={place.id}>
+              {index === 2 && canInstall && (
+                <article className="flex flex-col md:flex-row gap-5 p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900">
+                  <div className="w-full md:w-40 h-40 rounded-xl shrink-0 bg-blue-600 flex items-center justify-center shadow-md shadow-blue-600/20">
+                    <Share2 className="w-12 h-12 text-white/90" />
+                  </div>
+                  <div className="flex-1 flex flex-col justify-between py-1">
+                    <div>
+                      <p className="text-lg font-bold text-slate-900 dark:text-white mb-2">
+                        Share links straight to MapLists
+                      </p>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
+                        Install the app and it appears in your phone&apos;s share sheet — share any
+                        restaurant link, Google Maps URL, or travel article and we&apos;ll add it
+                        straight to your list.
+                      </p>
+                    </div>
+                    <div className="mt-4 flex items-center gap-3">
+                      <button
+                        onClick={handleInstall}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 px-4 py-2 rounded-full hover:bg-blue-700 transition-colors shadow-sm"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Install MapLists
+                      </button>
+                      <button
+                        onClick={handleDismiss}
+                        className="text-xs font-medium text-slate-400 hover:text-slate-600"
+                      >
+                        Not now
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              )}
+              <article
+                className="group flex flex-col md:flex-row gap-5 p-4 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
+              >
               <div className="w-full md:w-40 h-40 rounded-xl overflow-hidden shrink-0 bg-blue-50 dark:bg-slate-800 flex items-center justify-center">
                 {place.photoUrl ? (
                   <img
@@ -234,6 +271,7 @@ export default function PublicListPage() {
                 </div>
               </div>
             </article>
+            </React.Fragment>
           ))}
 
           {list.places.length === 0 && (

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Map, Search, Compass, TrendingUp, Clock, MapPin, ChevronDown } from 'lucide-react';
+import PWAInstallCard from '../components/PWAInstallCard';
 
 const MiniMap = dynamic(() => import('@/components/MiniMap'), { ssr: false });
 
@@ -144,6 +145,11 @@ export default function ExplorePage() {
           <Compass className="w-4 h-4 text-slate-500" />
           <p className="text-sm font-semibold">Explore All</p>
         </button>
+      </div>
+
+      {/* PWA Install Card */}
+      <div className="px-4 max-w-5xl mx-auto w-full">
+        <PWAInstallCard />
       </div>
 
       {/* Results Section */}
