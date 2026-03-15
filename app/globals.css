@@ -1,1 +1,25 @@
 @import "tailwindcss";
+
+@theme {
+  --color-primary: #1152d4;
+  --color-background-light: #f6f6f8;
+  --color-background-dark: #101622;
+  --font-display: var(--font-plus-jakarta), sans-serif;
+  --font-serif: var(--font-playfair), serif;
+}
+
+.premium-gradient {
+  background: linear-gradient(
+    to bottom,
+    rgba(16, 22, 34, 0.2) 0%,
+    rgba(16, 22, 34, 0.8) 70%,
+    rgba(16, 22, 34, 1) 100%
+  );
+}
+
+.glass-card {
+  background: rgba(25, 34, 51, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
