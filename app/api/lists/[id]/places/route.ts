@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { generateThumbnailUrl } from '@/lib/thumbnail';
 
 export async function POST(
   req: NextRequest,
@@ -24,6 +25,11 @@ export async function POST(
       order: count,
     },
   });
+
+  // Regenerate thumbnail with updated places
+  const allPlaces = await prisma.place.findMany({ where: { listId } });
+  const thumbnailUrl = generateThumbnailUrl(allPlaces);
+  await prisma.list.update({ where: { id: listId }, data: { thumbnailUrl } });
 
   return NextResponse.json(place, { status: 201 });
 }

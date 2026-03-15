@@ -57,7 +57,16 @@ export default function ListsPage() {
           {lists.map((list) => (
             <Link href={`/lists/${list.id}`} key={list.id} className="group flex flex-col bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 transition-all hover:shadow-md">
               <div className="relative aspect-video overflow-hidden bg-slate-200 flex items-center justify-center">
-                <MapIcon className="w-12 h-12 text-slate-400" />
+                {list.thumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={list.thumbnailUrl}
+                    alt={list.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <MapIcon className="w-12 h-12 text-slate-400" />
+                )}
                 <div className="absolute top-3 right-3 flex gap-2">
                   <span className="bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">
                     {list.isPublic ? 'Public' : 'Private'}

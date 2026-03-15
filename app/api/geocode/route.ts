@@ -3,8 +3,9 @@ import { NextResponse } from 'next/server';
 
 const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
 
-async function geocodeViaNominatim(name: string): Promise<{ lat: number; lng: number } | null> {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name)}&limit=1`;
+async function geocodeViaNominatim(name: string, context?: string): Promise<{ lat: number; lng: number } | null> {
+  const query = context ? `${name}, ${context}` : name;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
   const res = await fetch(url, { headers: { 'User-Agent': 'MapList/1.0' } });
   if (!res.ok) return null;
   const data = await res.json();
@@ -13,12 +14,13 @@ async function geocodeViaNominatim(name: string): Promise<{ lat: number; lng: nu
   return { lat: parseFloat(hit.lat), lng: parseFloat(hit.lon) };
 }
 
-async function geocodeViaGemini(name: string): Promise<{ lat: number; lng: number } | null> {
+async function geocodeViaGemini(name: string, context?: string): Promise<{ lat: number; lng: number } | null> {
   try {
+    const contextHint = context ? ` This place is located in ${context}.` : '';
     // Ask Gemini to describe where the place is located so we can geocode the description
     const response = await ai.models.generateContent({
       model: 'gemini-2.0-flash',
-      contents: `Search for "${name}" and tell me the nearest city, town, or district it is located in. Reply with ONLY a short location string suitable for geocoding, like "Sidemen, Karangasem, Bali" or "Nusa Penida, Klungkung, Bali". No other text.`,
+      contents: `Search for "${name}".${contextHint} Tell me the nearest city, town, or district it is located in. Reply with ONLY a short location string suitable for geocoding, like "Sidemen, Karangasem, Bali" or "Nusa Penida, Klungkung, Bali". No other text.`,
       config: {
         tools: [{ googleSearch: {} }],
       },
@@ -40,13 +42,13 @@ async function geocodeViaGemini(name: string): Promise<{ lat: number; lng: numbe
 
 export async function POST(req: Request) {
   try {
-    const { name } = await req.json();
+    const { name, context } = await req.json();
     if (!name) return NextResponse.json({ error: 'name is required' }, { status: 400 });
 
-    const nominatim = await geocodeViaNominatim(name);
+    const nominatim = await geocodeViaNominatim(name, context);
     if (nominatim) return NextResponse.json(nominatim);
 
-    const gemini = await geocodeViaGemini(name);
+    const gemini = await geocodeViaGemini(name, context);
     if (gemini) return NextResponse.json(gemini);
 
     return NextResponse.json({ lat: 0, lng: 0 });

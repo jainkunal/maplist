@@ -16,6 +16,10 @@ const PLACE_SCHEMA = {
         type: Type.STRING,
         description: 'Any notes, context, or recommendations associated with the place from the text or URL.',
       },
+      locationContext: {
+        type: Type.STRING,
+        description: 'The city, district, region, and country where this specific place is located, e.g. "Da Lat, Lam Dong, Vietnam" or "Kuta, Bali, Indonesia". Be as specific as possible.',
+      },
     },
     required: ['name'],
   },
@@ -36,11 +40,15 @@ async function fetchImageAsBase64(url: string): Promise<{ mimeType: string; data
   }
 }
 
-async function extractPlacesFromImages(imageUrls: string[]): Promise<{ name: string; notes?: string }[]> {
+async function extractPlacesFromImages(imageUrls: string[], captionContext?: string): Promise<{ name: string; notes?: string; locationContext?: string }[]> {
   const imageDataList = await Promise.all(imageUrls.slice(0, 10).map(fetchImageAsBase64));
   const validImages = imageDataList.filter(Boolean) as { mimeType: string; data: string }[];
 
   if (validImages.length === 0) return [];
+
+  const captionHint = captionContext
+    ? `\n\nAdditional context from the post caption (use this to infer the city/region for each place):\n${captionContext}`
+    : '';
 
   const parts: object[] = [
     {
@@ -48,7 +56,9 @@ async function extractPlacesFromImages(imageUrls: string[]): Promise<{ name: str
 
 Return ONLY place names that are explicitly visible as text in the images. Do not guess or infer — only return what you can actually read.
 
-If you see numbered lists or bullet points with place names in the images, extract all of them.`,
+If you see numbered lists or bullet points with place names in the images, extract all of them.
+
+For each place, populate locationContext with the specific city, district, region, and country (e.g. "Da Lat, Lam Dong, Vietnam"). Infer it from any visible text, hashtags, or clues in the images AND the caption context below. This is critical for accurate geocoding.${captionHint}`,
     },
     ...validImages.map((img) => ({ inlineData: img })),
   ];
@@ -77,9 +87,14 @@ export async function POST(req: Request) {
     if (imageUrls?.length) {
       try {
         console.log('[extract-places] Trying vision extraction on', imageUrls.length, 'images');
-        const visionPlaces = await extractPlacesFromImages(imageUrls);
+        const visionPlaces = await extractPlacesFromImages(imageUrls, captionContext);
         if (visionPlaces.length > 0) {
           console.log('[extract-places] Vision extracted', visionPlaces.length, 'places');
+          // If any place is missing locationContext, log a warning — Gemini geocoding will handle it
+          const missingCtx = visionPlaces.filter(p => !(p as any).locationContext).length;
+          if (missingCtx > 0) {
+            console.warn(`[extract-places] ${missingCtx} vision places have no locationContext`);
+          }
           return NextResponse.json({ places: visionPlaces });
         }
         console.log('[extract-places] Vision found no places, falling through to text extraction');
@@ -107,7 +122,7 @@ export async function POST(req: Request) {
 
       CRITICAL: DO NOT return an empty list. If you truly cannot find any places, return at minimum the city or region you can infer from any context clues.
 
-      For each place, provide its name and any context, notes, or descriptions associated with it.
+      For each place, provide its name, any context/notes, and a locationContext with the specific city, district, region, and country where that individual place is located. Each place may be in a different city or country — infer from any available clues (post caption, hashtags, place names themselves, etc.).
 
       Text/URL:
       ${promptInput}`,
