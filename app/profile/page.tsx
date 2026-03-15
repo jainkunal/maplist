@@ -19,7 +19,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-slate-50 pb-24">
+    <div className="relative flex flex-col overflow-x-hidden bg-slate-50 pb-6">
       {/* Header */}
       <header className="sticky top-0 z-50 flex items-center bg-white/80 backdrop-blur-md p-4 justify-between border-b border-slate-200">
         <div className="flex items-center gap-3">
