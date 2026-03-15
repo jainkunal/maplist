@@ -16,6 +16,9 @@ type ExploreList = {
   description: string;
   thumbnailUrl?: string | null;
   createdAt: string;
+  isPremium: boolean;
+  premiumPrice: number | null;
+  premiumDescription: string;
   places: ExplorePlace[];
   user?: { name?: string | null; image?: string | null } | null;
 };
@@ -199,7 +202,13 @@ export default function ExplorePage() {
                   >
                     {/* Thumbnail / Mini Map */}
                     <div className="relative aspect-video overflow-hidden bg-slate-100 flex items-center justify-center">
-                      {validPlaces.length > 0 ? (
+                      {list.isPremium && list.thumbnailUrl ? (
+                        <img
+                          src={list.thumbnailUrl}
+                          alt={list.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : validPlaces.length > 0 ? (
                         <MiniMap places={validPlaces} />
                       ) : (
                         <MapPin className="w-10 h-10 text-slate-300" />
@@ -208,6 +217,12 @@ export default function ExplorePage() {
                       <span className="absolute bottom-3 left-3 text-white text-xs font-bold bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full">
                         {list.places.length} {list.places.length === 1 ? 'place' : 'places'}
                       </span>
+                      {list.isPremium && (
+                        <span className="absolute top-3 right-3 flex items-center gap-1 bg-yellow-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                          <span className="material-symbols-outlined" style={{ fontSize: 11, fontVariationSettings: "'FILL' 1" }}>star</span>
+                          PREMIUM
+                        </span>
+                      )}
                     </div>
 
                     {/* Card Body */}
@@ -227,12 +242,18 @@ export default function ExplorePage() {
                             {list.user?.name ?? 'Anonymous'}
                           </span>
                         </div>
-                        <span className="text-xs text-slate-400">
-                          {new Date(list.createdAt).toLocaleDateString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </span>
+                        {list.isPremium && list.premiumPrice != null ? (
+                          <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                            ${list.premiumPrice.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">
+                            {new Date(list.createdAt).toLocaleDateString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                            })}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </Link>

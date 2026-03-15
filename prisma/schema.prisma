@@ -59,15 +59,18 @@ model Verification {
 }
 
 model List {
-  id           String   @id @default(uuid())
-  title        String
-  description  String   @default("")
-  isPublic     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  thumbnailUrl String?
-  places       Place[]
-  userId       String?
-  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id                 String   @id @default(uuid())
+  title              String
+  description        String   @default("")
+  isPublic           Boolean  @default(false)
+  isPremium          Boolean  @default(false)
+  premiumPrice       Float?
+  premiumDescription String   @default("")
+  createdAt          DateTime @default(now())
+  thumbnailUrl       String?
+  places             Place[]
+  userId             String?
+  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 model UnsupportedLink {
