@@ -2,9 +2,7 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMapStore } from '@/store/useMapStore';
-import { dbListToMapList } from '@/lib/mappers';
-import { Map, Sparkles, Loader2 } from 'lucide-react';
+import { Map, Sparkles } from 'lucide-react';
 
 function CreateMapForm() {
   const searchParams = useSearchParams();
@@ -15,158 +13,57 @@ function CreateMapForm() {
     if (sharedTitle || sharedText || sharedUrl) {
       return [sharedTitle, sharedText, sharedUrl].filter(Boolean).join('\n\n');
     }
+    // Restore input if the user came back from an error on the curating page
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('curating_input') ?? '';
+    }
     return '';
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
-  const setLists = useMapStore((state) => state.setLists);
-  const lists = useMapStore((state) => state.lists);
 
-  function extractGoogleMapsUrl(input: string): string | null {
-    const match = input.match(/https?:\/\/(maps\.app\.goo\.gl\/[^\s]+|(?:www\.)?google\.com\/maps\/[^\s]+)/);
-    return match ? match[0] : null;
-  }
-
-  function extractInstagramUrl(input: string): string | null {
-    const match = input.match(/https?:\/\/(?:www\.)?instagram\.com\/(?:reel|p)\/[A-Za-z0-9_-]+[^\s]*/);
-    return match ? match[0] : null;
-  }
-
-  const handleGenerate = async () => {
-    if (!text.trim()) {
+  const handleGenerate = () => {
+    const trimmed = text.trim();
+    if (!trimmed) {
       setError('Please enter some text to extract places from.');
       return;
     }
 
-    setLoading(true);
-    setError('');
+    // Detect any URL in the input
+    const urlMatch = trimmed.match(/https?:\/\/[^\s]+/);
+    if (urlMatch) {
+      const url = urlMatch[0].toLowerCase();
+      const isGoogleMaps = /maps\.app\.goo\.gl|google\.com\/maps/.test(url);
+      const isInstagram = /instagram\.com\/(reel|p)\//.test(url);
 
-    try {
-      let rawPlaces: { name: string; lat: number; lng: number; notes?: string }[] = [];
-      let listTitle = 'New Curated Map';
+      if (!isGoogleMaps && !isInstagram) {
+        // Identify the unsupported platform for a specific message
+        let platform = 'Unknown';
+        if (/youtube\.com|youtu\.be/.test(url)) platform = 'YouTube';
+        else if (/tiktok\.com/.test(url)) platform = 'TikTok';
+        else if (/twitter\.com|x\.com/.test(url)) platform = 'Twitter / X';
+        else if (/facebook\.com|fb\.com/.test(url)) platform = 'Facebook';
+        else if (/yelp\.com/.test(url)) platform = 'Yelp';
+        else if (/tripadvisor\.com/.test(url)) platform = 'TripAdvisor';
 
-      const gmapsUrl = extractGoogleMapsUrl(text);
-      if (gmapsUrl) {
-        const scrapeRes = await fetch('/api/scrape-gmaps', {
+        // Fire-and-forget: log for future support prioritisation
+        fetch('/api/unsupported-links', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: gmapsUrl }),
-        });
+          body: JSON.stringify({ url: urlMatch[0], platform }),
+        }).catch(() => {});
 
-        if (scrapeRes.ok) {
-          const data = await scrapeRes.json();
-          rawPlaces = data.places ?? [];
-          if (data.title) listTitle = data.title;
-        }
+        const label = platform === 'Unknown' ? 'This link' : platform;
+        setError(
+          `${label} isn't supported yet. Try pasting a Google Maps list link, an Instagram post, or just plain text with place names.`
+        );
+        return;
       }
-
-      if (!rawPlaces.length) {
-        const igUrl = extractInstagramUrl(text);
-        if (igUrl) {
-          let captionContext: string | undefined;
-          let imageUrls: string[] = [];
-          try {
-            const igRes = await fetch('/api/scrape-instagram', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: igUrl }),
-            });
-            if (igRes.ok) {
-              const igData = await igRes.json();
-              captionContext = igData.caption || undefined;
-              imageUrls = igData.imageUrls || [];
-            }
-          } catch { /* silent fallthrough */ }
-
-          const extractRes = await fetch('/api/extract-places', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, captionContext, imageUrls }),
-          });
-          if (!extractRes.ok) throw new Error('Failed to extract places from Instagram post.');
-          const data = await extractRes.json();
-          rawPlaces = data.places ?? [];
-        }
-      }
-
-      if (!rawPlaces.length) {
-        const extractRes = await fetch('/api/extract-places', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-
-        if (!extractRes.ok) throw new Error('Failed to extract places from text.');
-        const data = await extractRes.json();
-        rawPlaces = data.places ?? [];
-      }
-
-      if (!rawPlaces.length) {
-        const isInstagram = text.includes('instagram.com');
-        const isSocialMedia = isInstagram || text.includes('tiktok.com') || text.includes('youtube.com');
-        const hint = isInstagram
-          ? 'No places found in this Instagram post. The reel may be private or may not mention specific places. Try pasting the caption text directly.'
-          : isSocialMedia
-          ? 'No places found. Social media posts may require login. Try pasting the caption or place names from the post.'
-          : 'No places found. Try pasting the place names or caption text directly.';
-        throw new Error(hint);
-      }
-
-      // Geocode places that are missing coordinates
-      const geocodedPlaces: { name: string; lat: number; lng: number; notes: string }[] = [];
-      for (const place of rawPlaces) {
-        if (place.lat && place.lng) {
-          geocodedPlaces.push({ name: place.name, lat: place.lat, lng: place.lng, notes: place.notes || '' });
-        } else {
-          try {
-            const geocodeRes = await fetch('/api/geocode', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name: place.name }),
-            });
-            const coords = await geocodeRes.json();
-            if (coords.lat || coords.lng) {
-              geocodedPlaces.push({ name: place.name, lat: coords.lat, lng: coords.lng, notes: place.notes || '' });
-            }
-          } catch (geocodeError) {
-            console.error(`Failed to geocode ${place.name}:`, geocodeError);
-          }
-        }
-      }
-
-      // Save the list + all places to the database in one request
-      const createRes = await fetch('/api/lists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: listTitle,
-          description: 'Generated from text',
-          isPublic: false,
-          places: geocodedPlaces.map((p) => ({
-            name: p.name,
-            lat: p.lat,
-            lng: p.lng,
-            notes: p.notes,
-            tags: [],
-            recommendedBy: '',
-            visited: false,
-          })),
-        }),
-      });
-
-      if (!createRes.ok) throw new Error('Failed to save the list.');
-      const newList = await createRes.json();
-
-      // Hydrate local store
-      setLists([...lists, dbListToMapList(newList)]);
-
-      router.push(`/lists/${newList.id}`);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'An error occurred while generating the map.');
-    } finally {
-      setLoading(false);
     }
+
+    setError('');
+    sessionStorage.setItem('curating_input', trimmed);
+    router.push('/curating');
   };
 
   return (
@@ -195,7 +92,6 @@ function CreateMapForm() {
               onChange={(e) => setText(e.target.value)}
               className="relative w-full min-h-[180px] sm:min-h-[320px] rounded-2xl p-4 sm:p-6 bg-white text-base sm:text-lg leading-relaxed focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all border-slate-200 placeholder:text-slate-400"
               placeholder="Paste your list here...&#10;&#10;Example:&#10;1. Eiffel Tower, Paris&#10;2. Louvre Museum&#10;3. Notre Dame Cathedral&#10;4. Sacré-Cœur, Montmartre..."
-              disabled={loading}
             />
           </div>
           <p className="text-xs text-slate-500 px-1 italic">
@@ -207,20 +103,10 @@ function CreateMapForm() {
         <div className="pt-4">
           <button
             onClick={handleGenerate}
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-5 rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3 transition-all transform active:scale-[0.98]"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 rounded-2xl shadow-xl shadow-blue-600/20 flex items-center justify-center gap-3 transition-all transform active:scale-[0.98]"
           >
-            {loading ? (
-              <>
-                <Loader2 className="w-6 h-6 animate-spin" />
-                <span className="text-lg">Curating your world...</span>
-              </>
-            ) : (
-              <>
-                <span className="text-lg">Generate Visual Map</span>
-                <Sparkles className="w-6 h-6" />
-              </>
-            )}
+            <span className="text-lg">Generate Visual Map</span>
+            <Sparkles className="w-6 h-6" />
           </button>
         </div>
       </div>
@@ -230,7 +116,7 @@ function CreateMapForm() {
 
 export default function CreateMapPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><span className="text-blue-600 text-sm">Loading...</span></div>}>
       <CreateMapForm />
     </Suspense>
   );

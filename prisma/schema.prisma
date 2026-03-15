@@ -69,6 +69,13 @@ model List {
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
+model UnsupportedLink {
+  id        String   @id @default(uuid())
+  url       String
+  platform  String
+  createdAt DateTime @default(now())
+}
+
 model Place {
   id            String   @id @default(uuid())
   name          String
