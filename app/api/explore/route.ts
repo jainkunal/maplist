@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
           OR: [
             { title: { contains: q, mode: 'insensitive' as const } },
             { description: { contains: q, mode: 'insensitive' as const } },
+            { places: { some: { name: { contains: q, mode: 'insensitive' as const } } } },
+            { places: { some: { tags: { has: q } } } },
+            { user: { name: { contains: q, mode: 'insensitive' as const } } },
           ],
         }
       : {}),

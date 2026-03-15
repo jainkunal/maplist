@@ -3,7 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useMapStore, Place } from '@/store/useMapStore';
 import { dbListToMapList } from '@/lib/mappers';
-import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X, Trash2, Pencil, Globe, Lock, DollarSign } from 'lucide-react';
+import { ArrowLeft, Share, MoreVertical, MapPin, Navigation, Edit2, Check, X, Trash2, Pencil, Globe, Lock, DollarSign, Star, MessageSquare } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState, useMemo, useRef, useEffect } from 'react';
 
@@ -33,6 +33,11 @@ export default function ListDetailPage() {
   const [titleDraft, setTitleDraft] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // Reviews state
+  type Review = { id: string; rating: number; comment: string; visited: boolean; createdAt: string; user: { name: string; image: string | null } };
+  const [placeReviews, setPlaceReviews] = useState<Record<string, Review[]>>({});
+  const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
+
   // Fetch list from DB on mount if not already in store
   useEffect(() => {
     if (list) return;
@@ -57,6 +62,23 @@ export default function ListDetailPage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [menuOpen]);
+
+  // Fetch reviews for all places in this list
+  useEffect(() => {
+    if (!list) return;
+    list.places.forEach((place) => {
+      fetch(`/api/places/${place.id}/reviews`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            setPlaceReviews((prev) => ({ ...prev, [place.id]: data }));
+          }
+        })
+        .catch(() => {});
+    });
+  }, [list]);
+
+  const totalReviewCount = Object.values(placeReviews).reduce((sum, r) => sum + r.length, 0);
 
   const allTags = useMemo(() => {
     if (!list) return [];
@@ -340,6 +362,17 @@ export default function ListDetailPage() {
 
       {/* Places List */}
       <main className="flex-1 px-4 py-6 space-y-4 max-w-3xl mx-auto w-full">
+        {totalReviewCount > 0 && (
+          <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl">
+            <MessageSquare className="w-5 h-5 text-blue-600 shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-slate-800">
+                {totalReviewCount} {totalReviewCount === 1 ? 'review' : 'reviews'} from visitors
+              </p>
+              <p className="text-xs text-slate-500">People who visited places from your list left feedback below.</p>
+            </div>
+          </div>
+        )}
         {filteredPlaces.map((place) => (
           <div key={place.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md">
             <div className="flex gap-4 p-4">
@@ -457,6 +490,64 @@ export default function ListDetailPage() {
                     Recommended by <span className="font-bold text-slate-900">{place.recommendedBy}</span>
                   </span>
                 </div>
+              </div>
+            )}
+
+            {/* Visitor Reviews */}
+            {(placeReviews[place.id]?.length ?? 0) > 0 && (
+              <div className="border-t border-slate-200">
+                <button
+                  onClick={() => setExpandedReviews((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(place.id)) next.delete(place.id);
+                    else next.add(place.id);
+                    return next;
+                  })}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-bold text-slate-700">
+                      {placeReviews[place.id].length} {placeReviews[place.id].length === 1 ? 'review' : 'reviews'} from visitors
+                    </span>
+                    <div className="flex gap-0.5 ml-1">
+                      {(() => {
+                        const avg = placeReviews[place.id].reduce((s, r) => s + r.rating, 0) / placeReviews[place.id].length;
+                        return Array.from({ length: 5 }).map((_, i) => (
+                          <Star key={i} className={`w-3 h-3 ${i < Math.round(avg) ? 'text-yellow-400 fill-yellow-400' : 'text-slate-300'}`} />
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                  <span className="text-xs text-slate-400">{expandedReviews.has(place.id) ? 'Hide' : 'Show'}</span>
+                </button>
+                {expandedReviews.has(place.id) && (
+                  <div className="px-4 pb-4 space-y-3">
+                    {placeReviews[place.id].map((review) => (
+                      <div key={review.id} className="flex gap-3 p-3 bg-slate-50 rounded-xl">
+                        <div className="size-7 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600 shrink-0">
+                          {review.user.name?.charAt(0).toUpperCase() ?? '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-semibold text-slate-700">{review.user.name}</span>
+                            <div className="flex gap-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-slate-300'}`} />
+                              ))}
+                            </div>
+                            <span className="text-[10px] text-slate-400 ml-auto">
+                              {new Date(review.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                          {review.comment && (
+                            <p className="text-xs text-slate-600 leading-relaxed">{review.comment}</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

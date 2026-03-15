@@ -4,6 +4,7 @@ import { Plus_Jakarta_Sans, Playfair_Display } from 'next/font/google';
 import MainShell from './components/MainShell';
 import PWARegister from './components/PWARegister';
 import { PWAProvider } from './components/PWAContext';
+import { ToastProvider } from '@/components/Toast';
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -41,10 +42,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body suppressHydrationWarning>
-        <PWAProvider>
-          <PWARegister />
-          <MainShell>{children}</MainShell>
-        </PWAProvider>
+        <ToastProvider>
+          <PWAProvider>
+            <PWARegister />
+            <MainShell>{children}</MainShell>
+          </PWAProvider>
+        </ToastProvider>
       </body>
     </html>
   );
