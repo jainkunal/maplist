@@ -12,6 +12,21 @@ export async function GET(req: NextRequest) {
   const user = await getUser(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const saved = req.nextUrl.searchParams.get('saved') === 'true';
+
+  if (saved) {
+    const savedRows = await prisma.savedList.findMany({
+      where: { userId: user.id },
+      include: {
+        list: {
+          include: { places: { orderBy: { order: 'asc' } }, user: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return NextResponse.json(savedRows.map((r) => r.list));
+  }
+
   const lists = await prisma.list.findMany({
     where: { userId: user.id },
     include: { places: { orderBy: { order: 'asc' } } },
