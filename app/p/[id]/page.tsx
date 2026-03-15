@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 import { useSession } from '@/lib/auth-client';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { Share, Bookmark, MapPin, Navigation, Map, List, User, BookmarkCheck, Share2, Download } from 'lucide-react';
+import { Share, Bookmark, MapPin, Navigation, Map, List, User, BookmarkCheck, Share2, Download, Star, MessageSquare } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 import { usePWA } from '../../components/PWAContext';
 import { dbListToMapList } from '@/lib/mappers';
 import type { MapList } from '@/store/useMapStore';
@@ -29,6 +30,16 @@ export default function PublicListPage() {
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const { canInstall, handleInstall, handleDismiss } = usePWA();
+  const { toast } = useToast();
+  const [savingInProgress, setSavingInProgress] = useState(false);
+
+  // Reviews state
+  type Review = { id: string; rating: number; comment: string; visited: boolean; createdAt: string; user: { name: string; image: string | null } };
+  const [reviews, setReviews] = useState<Record<string, Review[]>>({});
+  const [reviewingPlaceId, setReviewingPlaceId] = useState<string | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     fetch(`/api/lists/${id}`)
@@ -51,6 +62,54 @@ export default function PublicListPage() {
       .catch(() => {});
   }, [id, session]);
 
+  // Fetch reviews for all places
+  useEffect(() => {
+    if (!list) return;
+    list.places.forEach((place) => {
+      fetch(`/api/places/${place.id}/reviews`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setReviews((prev) => ({ ...prev, [place.id]: data }));
+          }
+        })
+        .catch(() => {});
+    });
+  }, [list]);
+
+  const handleSubmitReview = async (placeId: string) => {
+    if (!session) {
+      router.push(`/login?callbackUrl=/p/${id}`);
+      return;
+    }
+    setSubmittingReview(true);
+    try {
+      const res = await fetch(`/api/places/${placeId}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: reviewRating, comment: reviewComment }),
+      });
+      if (res.ok) {
+        const review = await res.json();
+        setReviews((prev) => ({
+          ...prev,
+          [placeId]: [review, ...(prev[placeId] ?? []).filter((r) => r.user.name !== session.user.name)],
+        }));
+        setReviewingPlaceId(null);
+        setReviewComment('');
+        setReviewRating(5);
+        toast('Review submitted!');
+      } else {
+        const data = await res.json();
+        toast(data.error ?? 'Failed to submit review', 'error');
+      }
+    } catch {
+      toast('Something went wrong', 'error');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const handleShare = async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -69,11 +128,20 @@ export default function PublicListPage() {
     }
     const next = !saved;
     setSaved(next);
+    setSavingInProgress(true);
     try {
       const res = await fetch(`/api/lists/${id}/save`, { method: next ? 'POST' : 'DELETE' });
-      if (!res.ok) setSaved(!next);
+      if (!res.ok) {
+        setSaved(!next);
+        toast('Failed to update save status', 'error');
+      } else {
+        toast(next ? 'Saved to My Lists' : 'Removed from My Lists');
+      }
     } catch {
       setSaved(!next);
+      toast('Something went wrong', 'error');
+    } finally {
+      setSavingInProgress(false);
     }
   };
 
@@ -360,13 +428,16 @@ export default function PublicListPage() {
             {sessionResolved && isAuthenticated && (
               <button
                 onClick={handleSave}
-                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg text-sm ${
+                disabled={savingInProgress}
+                className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all shadow-lg text-sm disabled:opacity-60 ${
                   saved
                     ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                     : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
                 }`}
               >
-                {saved ? (
+                {savingInProgress ? (
+                  <div className="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                ) : saved ? (
                   <><BookmarkCheck className="w-5 h-5" /> Saved</>
                 ) : (
                   <><Bookmark className="w-5 h-5" /> Save to My Lists</>
@@ -466,7 +537,85 @@ export default function PublicListPage() {
                         {place.recommendedBy}
                       </span>
                     )}
+                    <button
+                      onClick={() => {
+                        if (!session) { router.push(`/login?callbackUrl=/p/${id}`); return; }
+                        setReviewingPlaceId(reviewingPlaceId === place.id ? null : place.id);
+                        setReviewRating(5);
+                        setReviewComment('');
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full hover:bg-slate-200 transition-colors ml-auto"
+                    >
+                      <MessageSquare className="w-3 h-3" />
+                      Review
+                    </button>
                   </div>
+
+                  {/* Reviews for this place */}
+                  {(reviews[place.id]?.length ?? 0) > 0 && (
+                    <div className="mt-4 space-y-3">
+                      {reviews[place.id].map((review) => (
+                        <div key={review.id} className="flex gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                          <div className="size-7 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600 shrink-0">
+                            {review.user.name?.charAt(0).toUpperCase() ?? '?'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{review.user.name}</span>
+                              <div className="flex gap-0.5">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                  <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'text-yellow-400 fill-yellow-400' : 'text-slate-300'}`} />
+                                ))}
+                              </div>
+                            </div>
+                            {review.comment && (
+                              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{review.comment}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Review form */}
+                  {reviewingPlaceId === place.id && (
+                    <div className="mt-4 p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900 rounded-xl space-y-3">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Leave a review</p>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setReviewRating(i + 1)}
+                            className="p-0.5"
+                          >
+                            <Star className={`w-6 h-6 transition-colors ${i < reviewRating ? 'text-yellow-400 fill-yellow-400' : 'text-slate-300 hover:text-yellow-300'}`} />
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder="Share your experience (optional)..."
+                        rows={2}
+                        className="w-full text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSubmitReview(place.id)}
+                          disabled={submittingReview}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors disabled:opacity-60"
+                        >
+                          {submittingReview ? 'Submitting...' : 'Submit Review'}
+                        </button>
+                        <button
+                          onClick={() => setReviewingPlaceId(null)}
+                          className="px-4 py-2 text-slate-500 hover:text-slate-700 text-xs font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </article>
             </React.Fragment>

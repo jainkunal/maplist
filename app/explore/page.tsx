@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { Map, Search, Compass, TrendingUp, Clock, MapPin, ChevronDown } from 'lucide-react';
+import { Map, Search, TrendingUp, Clock, MapPin, ChevronDown, Bookmark, BookmarkCheck } from 'lucide-react';
+import { useSession } from '@/lib/auth-client';
 import PWAInstallCard from '../components/PWAInstallCard';
 
 const MiniMap = dynamic(() => import('@/components/MiniMap'), { ssr: false });
@@ -47,6 +48,8 @@ export default function ExplorePage() {
   const [debouncedQ, setDebouncedQ] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const { data: session } = useSession();
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
 
   // Debounce search
   useEffect(() => {
@@ -84,6 +87,15 @@ export default function ExplorePage() {
     fetchLists(1, false);
   }, [fetchLists]);
 
+  // Fetch saved list IDs for the current user
+  useEffect(() => {
+    if (!session) return;
+    fetch('/api/lists/saved-ids')
+      .then((r) => r.json())
+      .then((ids: string[]) => setSavedIds(new Set(ids)))
+      .catch(() => {});
+  }, [session]);
+
   const handleLoadMore = () => {
     fetchLists(page + 1, true);
   };
@@ -111,7 +123,7 @@ export default function ExplorePage() {
             </div>
             <input
               className="form-input flex w-full border-none bg-transparent focus:outline-0 focus:ring-0 h-full placeholder:text-slate-400 px-3 text-base font-medium"
-              placeholder="Search list names or descriptions..."
+              placeholder="Search lists, places, or curators..."
               value={q}
               onChange={(e) => setQ(e.target.value)}
             />
@@ -135,10 +147,6 @@ export default function ExplorePage() {
             <p className="text-sm font-semibold">{label}</p>
           </button>
         ))}
-        <button className="flex h-10 shrink-0 items-center justify-center gap-x-2 rounded-full bg-white px-5 border border-slate-200 hover:border-blue-600/30 transition-colors text-slate-700">
-          <Compass className="w-4 h-4 text-slate-500" />
-          <p className="text-sm font-semibold">Explore All</p>
-        </button>
       </div>
 
       {/* PWA Install Card */}
@@ -208,12 +216,20 @@ export default function ExplorePage() {
                       <span className="absolute bottom-3 left-3 text-white text-xs font-bold bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full">
                         {list.places.length} {list.places.length === 1 ? 'place' : 'places'}
                       </span>
-                      {list.isPremium && (
-                        <span className="absolute top-3 right-3 flex items-center gap-1 bg-yellow-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
-                          <span className="material-symbols-outlined" style={{ fontSize: 11, fontVariationSettings: "'FILL' 1" }}>star</span>
-                          PREMIUM
-                        </span>
-                      )}
+                      <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                        {savedIds.has(list.id) && (
+                          <span className="flex items-center gap-1 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                            <BookmarkCheck className="w-3 h-3" />
+                            Saved
+                          </span>
+                        )}
+                        {list.isPremium && (
+                          <span className="flex items-center gap-1 bg-yellow-400 text-slate-900 text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm">
+                            <span className="material-symbols-outlined" style={{ fontSize: 11, fontVariationSettings: "'FILL' 1" }}>star</span>
+                            PREMIUM
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Card Body */}

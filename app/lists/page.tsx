@@ -19,6 +19,7 @@ export default function ListsPage() {
   const [tab, setTab] = useState<Tab>('created');
   const [savedLists, setSavedLists] = useState<MapList[]>([]);
   const [savedLoading, setSavedLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetch('/api/lists')
@@ -41,6 +42,16 @@ export default function ListsPage() {
       })
       .catch(() => setSavedLoading(false));
   }, [tab]);
+
+  const lowerQ = searchQuery.toLowerCase();
+  const filteredLists = (tab === 'created' ? lists : savedLists).filter((list) => {
+    if (!lowerQ) return true;
+    return (
+      list.title.toLowerCase().includes(lowerQ) ||
+      (list.description ?? '').toLowerCase().includes(lowerQ) ||
+      list.places.some((p) => p.name.toLowerCase().includes(lowerQ) || p.tags.some((t) => t.toLowerCase().includes(lowerQ)))
+    );
+  });
 
   return (
     <div className="bg-slate-50 pb-6">
@@ -73,6 +84,8 @@ export default function ListsPage() {
             <input
               type="text"
               placeholder="Search your maps..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-100 border-none rounded-xl py-3 pl-11 pr-4 focus:ring-2 focus:ring-blue-600 text-base"
             />
           </div>
@@ -93,7 +106,7 @@ export default function ListsPage() {
             </div>
           ))}
 
-          {!(tab === 'created' ? loading : savedLoading) && (tab === 'created' ? lists : savedLists).map((list) => (
+          {!(tab === 'created' ? loading : savedLoading) && filteredLists.map((list) => (
             <Link href={tab === 'saved' ? `/p/${list.id}` : `/lists/${list.id}`} key={list.id} className="group flex flex-col bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 transition-all hover:shadow-md">
               <div className="relative aspect-video overflow-hidden bg-slate-100 flex items-center justify-center">
                 {list.isPremium && list.thumbnailUrl ? (
@@ -156,6 +169,13 @@ export default function ListsPage() {
             </Link>
           ))}
 
+          {!loading && !savedLoading && tab === 'created' && filteredLists.length === 0 && searchQuery && lists.length > 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-500 bg-white rounded-xl border border-dashed border-slate-300">
+              <Search className="w-12 h-12 mb-4 text-slate-300" />
+              <p className="text-lg font-medium mb-2">No matches found</p>
+              <p className="text-sm">Try a different search term.</p>
+            </div>
+          )}
           {!loading && !savedLoading && tab === 'created' && lists.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-500 bg-white rounded-xl border border-dashed border-slate-300">
               <MapIcon className="w-12 h-12 mb-4 text-slate-300" />
@@ -165,6 +185,13 @@ export default function ListsPage() {
                 <Plus className="w-5 h-5" />
                 Create Map
               </Link>
+            </div>
+          )}
+          {!savedLoading && tab === 'saved' && filteredLists.length === 0 && searchQuery && savedLists.length > 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-12 text-slate-500 bg-white rounded-xl border border-dashed border-slate-300">
+              <Search className="w-12 h-12 mb-4 text-slate-300" />
+              <p className="text-lg font-medium mb-2">No matches found</p>
+              <p className="text-sm">Try a different search term.</p>
             </div>
           )}
           {!savedLoading && tab === 'saved' && savedLists.length === 0 && (
