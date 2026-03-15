@@ -4,11 +4,11 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Map, List, PlusCircle, User } from 'lucide-react';
 
-const NO_SHELL_ROUTES = ['/', '/login'];
+const NO_SHELL_ROUTES = ['/', '/login', '/p/'];
 
 export default function MainShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const hideShell = NO_SHELL_ROUTES.includes(pathname);
+  const hideShell = NO_SHELL_ROUTES.some((r) => pathname === r || pathname.startsWith('/p/'));
 
   if (hideShell) {
     return <>{children}</>;
