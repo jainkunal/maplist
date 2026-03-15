@@ -40,22 +40,17 @@ export default function PWARegister() {
   if (!installPrompt || dismissed) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-3 bg-blue-600 px-4 py-3 text-white shadow-lg">
-      <div className="flex items-center gap-3">
-        <Download className="w-5 h-5 shrink-0" />
-        <p className="text-sm font-medium">Install MapLists for a better experience</p>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={handleInstall}
-          className="rounded-full bg-white px-3 py-1 text-xs font-bold text-blue-600 hover:bg-blue-50"
-        >
-          Install
-        </button>
-        <button onClick={() => setDismissed(true)} className="p-1 opacity-80 hover:opacity-100">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+    <div className="fixed bottom-24 right-4 z-[100] flex items-center gap-2 rounded-full bg-blue-600 pl-3 pr-1 py-1 text-white shadow-lg shadow-blue-600/30">
+      <Download className="w-4 h-4 shrink-0" />
+      <button
+        onClick={handleInstall}
+        className="text-sm font-semibold whitespace-nowrap"
+      >
+        Install app
+      </button>
+      <button onClick={() => setDismissed(true)} className="p-1 opacity-70 hover:opacity-100">
+        <X className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }
