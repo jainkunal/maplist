@@ -218,7 +218,7 @@ export default function PublicListPage() {
   // ─── Premium layout (paywall — only shown when user does NOT have access) ──
   if (list.isPremium && !hasAccess && !checkingAccess) {
     return (
-      <div className="relative flex min-h-screen w-full flex-col bg-slate-50 dark:bg-[#101622] overflow-x-hidden"
+      <div className="relative flex h-dvh w-full flex-col bg-slate-50 dark:bg-[#101622] overflow-x-hidden overflow-y-auto"
         style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
       >
         {/* Top Bar */}
@@ -400,7 +400,7 @@ export default function PublicListPage() {
   // ─── Free list layout ─────────────────────────────────────────────────────
   return (
     <div
-      className="bg-slate-50 dark:bg-background-dark min-h-screen font-[var(--font-plus-jakarta)]"
+      className="bg-slate-50 dark:bg-background-dark h-dvh overflow-y-auto font-[var(--font-plus-jakarta)]"
       style={{ paddingBottom: sessionResolved ? 'calc(5rem + env(safe-area-inset-bottom))' : '0' }}
     >
       {/* Top Nav */}
