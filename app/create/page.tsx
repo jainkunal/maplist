@@ -37,27 +37,31 @@ function CreateMapForm() {
       const isInstagram = /instagram\.com\/(reel|p)\//.test(url);
 
       if (!isGoogleMaps && !isInstagram) {
-        // Identify the unsupported platform for a specific message
-        let platform = 'Unknown';
-        if (/youtube\.com|youtu\.be/.test(url)) platform = 'YouTube';
-        else if (/tiktok\.com/.test(url)) platform = 'TikTok';
-        else if (/twitter\.com|x\.com/.test(url)) platform = 'Twitter / X';
-        else if (/facebook\.com|fb\.com/.test(url)) platform = 'Facebook';
-        else if (/yelp\.com/.test(url)) platform = 'Yelp';
-        else if (/tripadvisor\.com/.test(url)) platform = 'TripAdvisor';
+        // Block platforms that require login and can't be scraped
+        const isUnsocial =
+          /youtube\.com|youtu\.be/.test(url) ||
+          /tiktok\.com/.test(url) ||
+          /twitter\.com|x\.com/.test(url) ||
+          /facebook\.com|fb\.com/.test(url);
 
-        // Fire-and-forget: log for future support prioritisation
-        fetch('/api/unsupported-links', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: urlMatch[0], platform }),
-        }).catch(() => {});
+        if (isUnsocial) {
+          let platform = 'YouTube';
+          if (/tiktok\.com/.test(url)) platform = 'TikTok';
+          else if (/twitter\.com|x\.com/.test(url)) platform = 'Twitter / X';
+          else if (/facebook\.com|fb\.com/.test(url)) platform = 'Facebook';
 
-        const label = platform === 'Unknown' ? 'This link' : platform;
-        setError(
-          `${label} isn't supported yet. Try pasting a Google Maps list link, an Instagram post, or just plain text with place names.`
-        );
-        return;
+          fetch('/api/unsupported-links', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: urlMatch[0], platform }),
+          }).catch(() => {});
+
+          setError(
+            `${platform} isn't supported yet. Try pasting a Google Maps list link, an Instagram post, an article URL, or just plain text with place names.`
+          );
+          return;
+        }
+        // All other URLs (articles, blogs, etc.) are supported — fall through
       }
     }
 
@@ -74,7 +78,7 @@ function CreateMapForm() {
         </div>
         <h1 className="text-2xl sm:text-4xl font-bold tracking-tight mb-2 sm:mb-4">Craft Your Collection</h1>
         <p className="text-slate-500 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
-          Transform your list of destinations into a premium, interactive map experience.
+          Paste an article, Google Maps list, Instagram post, or plain text — we'll pull out the places and build your map.
         </p>
       </section>
 
@@ -91,11 +95,11 @@ function CreateMapForm() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="relative w-full min-h-[180px] sm:min-h-[320px] rounded-2xl p-4 sm:p-6 bg-white text-base sm:text-lg leading-relaxed focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all border-slate-200 placeholder:text-slate-400"
-              placeholder="Paste your list here...&#10;&#10;Example:&#10;1. Eiffel Tower, Paris&#10;2. Louvre Museum&#10;3. Notre Dame Cathedral&#10;4. Sacré-Cœur, Montmartre..."
+              placeholder="Paste your list here...&#10;&#10;Try:&#10;• A travel article URL (e.g. nytimes.com/travel/...)&#10;• A Google Maps list link&#10;• An Instagram post link&#10;• Plain text with place names"
             />
           </div>
           <p className="text-xs text-slate-500 px-1 italic">
-            Tip: You can paste names, addresses, or even messy notes. Our AI will clean it up.
+            Tip: Article URLs work great — paste a "best restaurants in NYC" blog post and we'll map every place.
           </p>
           {error && <p className="text-sm text-red-500 px-1 bg-red-50 p-3 rounded-lg border border-red-100">{error}</p>}
         </div>

@@ -2,7 +2,7 @@ import { prisma } from './prisma';
 import { geocodePlace } from './geocode';
 import { scrapeGoogleMapsList } from './scrape-gmaps';
 import { scrapeInstagramPost } from './scrape-instagram';
-import { extractPlacesFromInput, generateListDescription, RawPlace } from './extract-places';
+import { extractPlacesFromInput, generateListDescription, generateTitleFromArticle, RawPlace } from './extract-places';
 import { generateThumbnailUrl } from './thumbnail';
 
 function extractGoogleMapsUrl(input: string): string | null {
@@ -44,6 +44,14 @@ export async function processListAsync(listId: string, input: string): Promise<v
       console.log('[pipeline] Extracting from plain text/URL');
       const result = await extractPlacesFromInput({ text: input });
       rawPlaces = result.places;
+      // Generate title from article URL if input looks like one
+      if (rawPlaces.length) {
+        const articleUrlMatch = input.trim().match(/^https?:\/\/[^\s]+$/);
+        if (articleUrlMatch) {
+          const generatedTitle = await generateTitleFromArticle(articleUrlMatch[0], rawPlaces.map(p => p.name));
+          if (generatedTitle) title = generatedTitle;
+        }
+      }
     }
 
     if (!rawPlaces.length) {

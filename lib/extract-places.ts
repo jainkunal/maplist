@@ -46,6 +46,26 @@ Reply with just the description.`,
   }
 }
 
+export async function generateTitleFromArticle(articleUrl: string, placeNames: string[]): Promise<string | null> {
+  try {
+    const placesPreview = placeNames.slice(0, 6).join(', ');
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: `Given this article URL and the places found in it, suggest a short, catchy title for a saved map list. Max 6 words, no quotes, no punctuation at the end.
+
+Article URL: ${articleUrl}
+Places found: ${placesPreview}
+
+Reply with just the title.`,
+      config: { tools: [{ urlContext: {} }] },
+    });
+    const title = response.text?.trim().replace(/^["']|["']$/g, '').trim();
+    return title || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateListTitle(captionContext: string, placeNames: string[]): Promise<string | null> {
   try {
     const placesPreview = placeNames.slice(0, 6).join(', ');
