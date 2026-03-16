@@ -4,6 +4,7 @@ import { scrapeGoogleMapsList } from './scrape-gmaps';
 import { scrapeInstagramPost } from './scrape-instagram';
 import { extractPlacesFromInput, generateListDescription, generateTitleFromArticle, RawPlace } from './extract-places';
 import { generateThumbnailUrl } from './thumbnail';
+import { fetchPhotosForList } from './fetch-photos';
 
 function extractGoogleMapsUrl(input: string): string | null {
   const match = input.match(/https?:\/\/(maps\.app\.goo\.gl\/[^\s]+|(?:www\.)?google\.com\/maps\/[^\s]+)/);
@@ -113,6 +114,11 @@ export async function processListAsync(listId: string, input: string): Promise<v
     });
 
     console.log('[pipeline] List', listId, 'ready with', geocodedPlaces.length, 'places');
+
+    // Step 4: Fetch photos in the background (non-blocking)
+    fetchPhotosForList(listId).catch((err) =>
+      console.error('[pipeline] Error fetching photos for list', listId, err?.message ?? err)
+    );
   } catch (err: any) {
     console.error('[pipeline] Error processing list', listId, err?.message ?? err);
     await prisma.list.update({ where: { id: listId }, data: { status: 'error' } }).catch(() => {});
