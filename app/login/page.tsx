@@ -40,9 +40,13 @@ function LoginForm() {
     }
   }
 
+  const [googleLoading, setGoogleLoading] = useState(false);
+
   async function handleGoogle() {
     setError('');
+    setGoogleLoading(true);
     await authClient.signIn.social({ provider: 'google', callbackURL: callbackUrl });
+    setGoogleLoading(false);
   }
 
   return (
@@ -162,7 +166,8 @@ function LoginForm() {
           {/* OAuth Buttons */}
           <button
             onClick={handleGoogle}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg border border-slate-700 hover:bg-white/5 transition-all"
+            disabled={googleLoading}
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-lg border border-slate-700 hover:bg-white/5 disabled:opacity-60 transition-all"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -182,7 +187,9 @@ function LoginForm() {
                 fill="currentColor"
               />
             </svg>
-            <span className="text-sm font-semibold">Continue with Google</span>
+            <span className="text-sm font-semibold">
+              {googleLoading ? 'Redirecting…' : 'Continue with Google'}
+            </span>
           </button>
         </div>
 
