@@ -50,7 +50,7 @@ function LoginForm() {
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-6 sm:p-12 overflow-hidden bg-background-dark text-slate-100 font-display">
+    <div className="relative min-h-dvh flex flex-col items-center justify-center p-6 sm:p-12 overflow-hidden bg-background-dark text-slate-100 font-display">
       {/* Background decorative elements */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px]" />

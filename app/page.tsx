@@ -10,7 +10,7 @@ export default async function SplashPage() {
     redirect('/lists');
   }
   return (
-    <div className="relative flex h-screen w-full flex-col bg-background-dark overflow-hidden">
+    <div className="relative flex h-dvh w-full flex-col bg-background-dark overflow-hidden">
       {/* Full-bleed background image */}
       <div className="absolute inset-0 z-0">
         <div
