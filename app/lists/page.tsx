@@ -45,6 +45,7 @@ export default function ListsPage() {
 
   const lowerQ = searchQuery.toLowerCase();
   const filteredLists = (tab === 'created' ? lists : savedLists).filter((list) => {
+    if (list.status === 'error') return false;
     if (!lowerQ) return true;
     return (
       list.title.toLowerCase().includes(lowerQ) ||
