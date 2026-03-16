@@ -8,8 +8,10 @@ export function middleware(request: NextRequest) {
 
   if (!isProtected) return NextResponse.next();
 
-  // better-auth sets a session cookie named "better-auth.session_token"
-  const sessionCookie = request.cookies.get('better-auth.session_token');
+  // better-auth uses __Secure- prefix in HTTPS (production), plain name in HTTP (dev)
+  const sessionCookie =
+    request.cookies.get('__Secure-better-auth.session_token') ||
+    request.cookies.get('better-auth.session_token');
 
   if (!sessionCookie) {
     const loginUrl = new URL('/login', request.url);
