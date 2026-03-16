@@ -650,8 +650,12 @@ export default function ListDetailPage() {
                   <div className="px-4 pb-4 space-y-3">
                     {placeReviews[place.id].map((review) => (
                       <div key={review.id} className="flex gap-3 p-3 bg-slate-50 rounded-xl">
-                        <div className="size-7 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600 shrink-0">
-                          {review.user.name?.charAt(0).toUpperCase() ?? '?'}
+                        <div className="size-7 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600 shrink-0 overflow-hidden">
+                          {review.user.image ? (
+                            <img src={review.user.image} alt={review.user.name ?? ''} className="size-7 rounded-full object-cover" />
+                          ) : (
+                            review.user.name?.charAt(0).toUpperCase() ?? '?'
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
