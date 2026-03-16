@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getUser } from '@/lib/server-auth';
 import { generateThumbnailUrl } from '@/lib/thumbnail';
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { id: listId } = await params;
+
+  const list = await prisma.list.findUnique({ where: { id: listId }, select: { userId: true } });
+  if (!list) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (list.userId !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
   const body = await req.json();
 
   const count = await prisma.place.count({ where: { listId } });

@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
-
-async function getUser(req: NextRequest) {
-  const session = await auth.api.getSession({ headers: req.headers });
-  return session?.user ?? null;
-}
+import { getUser } from '@/lib/server-auth';
 
 // GET /api/lists/[id]/save — returns whether the current user has saved this list
 export async function GET(
