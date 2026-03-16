@@ -164,16 +164,18 @@ export async function extractPlacesFromInput(params: {
 
       For each place, provide its name, any context/notes, and a locationContext with the specific city, district, region, and country where that individual place is located. Each place may be in a different city or country — infer from any available clues (post caption, hashtags, place names themselves, etc.).
 
+      Return ONLY a valid JSON array with no markdown, no explanation. Each item: { "name": string, "notes": string, "locationContext": string }.
+
       Text/URL:
       ${promptInput}`,
     config: {
-      responseMimeType: 'application/json',
-      responseSchema: PLACE_SCHEMA,
       tools: [{ googleSearch: {} }, { urlContext: {} }],
     },
   });
 
-  const places = JSON.parse(response.text || '[]');
+  const raw = response.text || '[]';
+  const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/) || raw.match(/(\[[\s\S]*\])/);
+  const places = JSON.parse(jsonMatch ? jsonMatch[1].trim() : raw);
   const listTitle = captionContext && places.length > 0
     ? await generateListTitle(captionContext, places.map((p: { name: string }) => p.name))
     : null;
