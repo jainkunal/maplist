@@ -148,7 +148,7 @@ export async function extractPlacesFromInput(params: {
     : text;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-pro-preview-05-06',
+    model: 'gemini-2.5-pro',
     contents: `You are an expert travel curator. Extract a list of places from the following text or URL.
 
       STEP 1: If the input contains a URL, first try to access it directly using urlContext.
