@@ -112,7 +112,8 @@ function extractList(payload: string): { title: string; places: GmapsPlace[] } {
   }
   const data = JSON.parse(text);
   const title = (data[0][4] as string) || 'Imported List';
-  const places = extractPlaces(data[0][8]);
+  const rawPlaces = data[0][8];
+  const places = extractPlaces(Array.isArray(rawPlaces) ? rawPlaces : []);
   return { title, places };
 }
 
