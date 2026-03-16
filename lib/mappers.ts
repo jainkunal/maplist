@@ -26,6 +26,7 @@ type DbList = {
   premiumDescription: string;
   createdAt: string | Date;
   thumbnailUrl?: string | null;
+  status?: string;
   places: DbPlace[];
   user?: { id: string; name: string | null; image: string | null } | null;
 };
@@ -41,6 +42,7 @@ export function dbListToMapList(list: DbList): MapList {
     premiumDescription: list.premiumDescription,
     createdAt: new Date(list.createdAt).getTime(),
     thumbnailUrl: list.thumbnailUrl,
+    status: list.status,
     places: list.places.map(dbPlaceToPlace),
     user: list.user,
   };

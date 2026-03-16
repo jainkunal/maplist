@@ -24,6 +24,7 @@ export interface MapList {
   premiumDescription: string;
   createdAt: number;
   thumbnailUrl?: string | null;
+  status?: string;
   user?: { id: string; name: string | null; image: string | null } | null;
 }
 

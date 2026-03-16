@@ -86,6 +86,8 @@ model List {
   premiumDescription String      @default("")
   createdAt          DateTime    @default(now())
   thumbnailUrl       String?
+  status             String      @default("ready")
+  processingInput    String?     @db.Text
   places             Place[]
   userId             String?
   user               User?       @relation(fields: [userId], references: [id], onDelete: SetNull)

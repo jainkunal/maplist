@@ -54,6 +54,26 @@ export default function ListDetailPage() {
       .catch(() => setFetchLoading(false));
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Poll for updates while the list is being processed in the background
+  useEffect(() => {
+    if (!list || list.status !== 'processing') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/lists/${id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status !== 'processing') {
+          clearInterval(interval);
+          const mapped = dbListToMapList(data);
+          setLists(lists.map((l) => (l.id === id ? mapped : l)));
+        }
+      } catch { /* keep polling */ }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [list?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!menuOpen) return;
     const handler = (e: MouseEvent) => {
@@ -86,6 +106,68 @@ export default function ListDetailPage() {
     list.places.forEach(p => p.tags.forEach(t => tags.add(t)));
     return Array.from(tags);
   }, [list]);
+
+  if (list?.status === 'processing') {
+    return (
+      <div className="relative flex flex-col overflow-x-hidden bg-slate-50 pb-6">
+        <header className="sticky top-0 z-50 flex items-center bg-white/80 backdrop-blur-md p-4 justify-between border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/lists')}
+              className="text-slate-900 flex size-10 shrink-0 items-center justify-center rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <div>
+              <h1 className="text-slate-900 text-lg font-bold leading-tight tracking-tight">Building your map...</h1>
+              <p className="text-xs text-slate-500">This usually takes 20–60 seconds</p>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+          <div className="relative mb-8 flex items-center justify-center">
+            <div className="absolute w-40 h-40 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+            <div className="relative w-32 h-32 flex items-center justify-center border-2 border-blue-500/30 rounded-full">
+              <div className="absolute inset-0 border-t-2 border-blue-600 rounded-full animate-spin" />
+              <span className="material-symbols-outlined text-blue-600 text-5xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                explore
+              </span>
+            </div>
+          </div>
+
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Curating your world</h2>
+          <p className="text-slate-500 text-sm max-w-xs leading-relaxed mb-8">
+            We&apos;re extracting places, geocoding them, and building your map in the background. Feel free to do something else — this page will update automatically.
+          </p>
+
+          <div className="w-full max-w-xs space-y-3">
+            {['Parsing your list', 'Geocoding locations', 'Saving your map'].map((step, i) => (
+              <div key={i} className="flex items-center gap-3 text-slate-400">
+                <span className="material-symbols-outlined text-base animate-pulse text-blue-500">pending</span>
+                <span className="text-sm font-medium">{step}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (list?.status === 'error') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center bg-slate-50">
+        <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-red-500 text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>error</span>
+        </div>
+        <h1 className="text-xl font-bold text-slate-900 mb-2">Something went wrong</h1>
+        <p className="text-slate-500 text-sm mb-6">We couldn&apos;t extract places from your input. Try again with a different link or paste the place names directly.</p>
+        <button onClick={() => router.push('/create')} className="bg-blue-600 text-white font-semibold px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors">
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   if (!list) {
     if (fetchLoading) {
