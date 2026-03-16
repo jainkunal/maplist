@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 export async function geocodeViaNominatim(name: string, context?: string): Promise<{ lat: number; lng: number } | null> {
   const query = context ? `${name}, ${context}` : name;

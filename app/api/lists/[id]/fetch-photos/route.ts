@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import https from 'https';
 import http from 'http';
 import { prisma } from '@/lib/prisma';
+import { getUser } from '@/lib/server-auth';
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -73,10 +74,17 @@ async function fetchPhotoBySearch(name: string, lat: number, lng: number): Promi
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getUser(req);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { id: listId } = await params;
+
+  const listOwner = await prisma.list.findUnique({ where: { id: listId }, select: { userId: true } });
+  if (!listOwner) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (listOwner.userId !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const places = await prisma.place.findMany({
     where: { listId, photoUrl: null },

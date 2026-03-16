@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
+import { getUser } from '@/lib/server-auth';
 import { processListAsync } from '@/lib/pipeline';
-
-async function getUser(req: NextRequest) {
-  const session = await auth.api.getSession({ headers: req.headers });
-  return session?.user ?? null;
-}
 
 export async function POST(req: NextRequest) {
   const user = await getUser(req);
