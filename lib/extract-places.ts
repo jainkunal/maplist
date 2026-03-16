@@ -30,6 +30,22 @@ async function fetchImageAsBase64(url: string): Promise<{ mimeType: string; data
   }
 }
 
+export async function generateListDescription(title: string, placeNames: string[]): Promise<string | null> {
+  try {
+    const placesPreview = placeNames.slice(0, 8).join(', ');
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: `Write a concise 5-10 word description for a map list titled "${title}" containing these places: ${placesPreview}. Focus on the vibe, location, or theme. No quotes, no punctuation at end.
+
+Reply with just the description.`,
+    });
+    const description = response.text?.trim().replace(/^["']|["']$/g, '').trim();
+    return description || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateListTitle(captionContext: string, placeNames: string[]): Promise<string | null> {
   try {
     const placesPreview = placeNames.slice(0, 6).join(', ');

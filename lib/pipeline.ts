@@ -2,7 +2,7 @@ import { prisma } from './prisma';
 import { geocodePlace } from './geocode';
 import { scrapeGoogleMapsList } from './scrape-gmaps';
 import { scrapeInstagramPost } from './scrape-instagram';
-import { extractPlacesFromInput, RawPlace } from './extract-places';
+import { extractPlacesFromInput, generateListDescription, RawPlace } from './extract-places';
 import { generateThumbnailUrl } from './thumbnail';
 
 function extractGoogleMapsUrl(input: string): string | null {
@@ -91,6 +91,7 @@ export async function processListAsync(listId: string, input: string): Promise<v
     }));
 
     const thumbnailUrl = generateThumbnailUrl(placesData);
+    const description = await generateListDescription(title, geocodedPlaces.map(p => p.name));
 
     await prisma.list.update({
       where: { id: listId },
@@ -98,6 +99,7 @@ export async function processListAsync(listId: string, input: string): Promise<v
         title,
         status: 'ready',
         thumbnailUrl,
+        ...(description && { description }),
         places: { create: placesData },
       },
     });

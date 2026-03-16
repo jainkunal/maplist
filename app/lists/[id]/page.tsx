@@ -31,6 +31,8 @@ export default function ListDetailPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Reviews state
@@ -272,6 +274,16 @@ export default function ListDetailPage() {
     setEditingTitle(false);
   };
 
+  const handleUpdateDescription = (description: string) => {
+    updateList(id, { description });
+    fetch(`/api/lists/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description }),
+    });
+    setEditingDescription(false);
+  };
+
   const handleDeleteList = () => {
     deleteList(id);
     fetch(`/api/lists/${id}`, { method: 'DELETE' });
@@ -412,6 +424,37 @@ export default function ListDetailPage() {
           </button>
         </div>
       )}
+
+      {/* Description */}
+      <div className="px-4 py-3 bg-white border-b border-slate-200">
+        {editingDescription ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              value={descriptionDraft}
+              onChange={(e) => setDescriptionDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleUpdateDescription(descriptionDraft);
+                if (e.key === 'Escape') setEditingDescription(false);
+              }}
+              className="flex-1 text-sm rounded-lg border border-blue-400 px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Add a short description..."
+            />
+            <button onClick={() => handleUpdateDescription(descriptionDraft)} className="text-blue-600"><Check className="w-4 h-4" /></button>
+            <button onClick={() => setEditingDescription(false)} className="text-slate-400"><X className="w-4 h-4" /></button>
+          </div>
+        ) : (
+          <button
+            onClick={() => { setDescriptionDraft(list.description || ''); setEditingDescription(true); }}
+            className="group flex items-center gap-2 text-left w-full"
+          >
+            <span className={`text-sm flex-1 ${list.description ? 'text-slate-600' : 'text-slate-400 italic'}`}>
+              {list.description || 'Add a description...'}
+            </span>
+            <Pencil className="w-3 h-3 text-slate-300 group-hover:text-slate-500 shrink-0 transition-colors" />
+          </button>
+        )}
+      </div>
 
       {/* Filter Chips */}
       {allTags.length > 0 && (
