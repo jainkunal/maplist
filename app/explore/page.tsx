@@ -242,8 +242,12 @@ export default function ExplorePage() {
                       )}
                       <div className="mt-auto flex items-center justify-between pt-3 border-t border-slate-100">
                         <div className="flex items-center gap-2">
-                          <div className="size-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600">
-                            {authorInitial}
+                          <div className="size-6 rounded-full bg-blue-100 flex items-center justify-center text-[10px] font-bold text-blue-600 overflow-hidden shrink-0">
+                            {list.user?.image ? (
+                              <img src={list.user.image} alt={list.user.name ?? ''} className="size-6 rounded-full object-cover" />
+                            ) : (
+                              authorInitial
+                            )}
                           </div>
                           <span className="text-xs text-slate-500 font-medium truncate max-w-[100px]">
                             {list.user?.name ?? 'Anonymous'}
