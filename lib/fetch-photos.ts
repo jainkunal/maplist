@@ -50,9 +50,15 @@ function extractPhotoFromHtml(html: string): string | null {
 }
 
 // Fetch photo using a known Google Place ID — most reliable, used for Google Maps imports.
+// Supports both standard place IDs (ChIJ...) and numeric CIDs scraped from Google Maps lists.
 export async function fetchPhotoByPlaceId(googlePlaceId: string): Promise<string | null> {
   try {
-    const html = await httpsGetBody(`https://www.google.com/maps/place/?q=place_id:${googlePlaceId}`);
+    // Numeric-only IDs are CIDs; standard place IDs are alphanumeric (ChIJ…)
+    const isCid = /^\d+$/.test(googlePlaceId);
+    const url = isCid
+      ? `https://www.google.com/maps/place/?cid=${googlePlaceId}`
+      : `https://www.google.com/maps/place/?q=place_id:${googlePlaceId}`;
+    const html = await httpsGetBody(url);
     return extractPhotoFromHtml(html);
   } catch {
     return null;
