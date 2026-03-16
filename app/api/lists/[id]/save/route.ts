@@ -34,6 +34,11 @@ export async function POST(
 
   const { id } = await params;
 
+  const list = await prisma.list.findUnique({ where: { id }, select: { userId: true } });
+  if (list?.userId === currentUser.id) {
+    return NextResponse.json({ error: 'Cannot save your own list' }, { status: 400 });
+  }
+
   await prisma.savedList.upsert({
     where: { userId_listId: { userId: currentUser.id, listId: id } },
     create: { userId: currentUser.id, listId: id },

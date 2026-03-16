@@ -471,7 +471,7 @@ export default function PublicListPage() {
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {list.places.length} {list.places.length === 1 ? 'place' : 'places'} in this list
             </p>
-            {sessionResolved && isAuthenticated && (
+            {sessionResolved && isAuthenticated && session?.user.id !== list.user?.id && (
               <button
                 onClick={handleSave}
                 disabled={savingInProgress}
