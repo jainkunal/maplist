@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
-
-function isAdmin(userId: string): boolean {
-  const adminIds = (process.env.ADMIN_USER_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  return adminIds.includes(userId);
-}
+import { isAdmin } from '@/lib/is-admin';
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
-  if (!session || !isAdmin(session.user.id)) {
+  if (!session || !await isAdmin(session.user.id)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
@@ -23,7 +19,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await auth.api.getSession({ headers: req.headers });
-  if (!session || !isAdmin(session.user.id)) {
+  if (!session || !await isAdmin(session.user.id)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
