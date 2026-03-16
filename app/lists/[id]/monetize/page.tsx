@@ -141,13 +141,18 @@ export default function MonetizePage() {
       premiumDescription: isPremium ? description : '',
       thumbnailUrl: coverUrl || null,
     };
-    updateList(id, { ...update, thumbnailUrl: update.thumbnailUrl ?? undefined });
-    await fetch(`/api/lists/${id}`, {
+    const res = await fetch(`/api/lists/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(update),
     });
     setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? 'Failed to save. Please try again.');
+      return;
+    }
+    updateList(id, { ...update, thumbnailUrl: update.thumbnailUrl ?? undefined });
     setPublished(true);
   };
 
