@@ -501,8 +501,10 @@ export default function ListDetailPage() {
         {filteredPlaces.map((place) => (
           <div key={place.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm transition-all hover:shadow-md">
             <div className="flex gap-4 p-4">
-              <div className="w-16 h-16 rounded-lg bg-blue-50 shrink-0 flex items-center justify-center text-blue-600">
-                <MapPin className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-lg bg-blue-50 shrink-0 overflow-hidden flex items-center justify-center text-blue-600">
+                {place.photoUrl
+                  ? <img src={place.photoUrl} alt={place.name} className="w-full h-full object-cover" />
+                  : <MapPin className="w-8 h-8" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
