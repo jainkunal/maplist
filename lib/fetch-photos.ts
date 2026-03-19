@@ -5,10 +5,11 @@ import { prisma } from './prisma';
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept-Language': 'en-US,en;q=0.9',
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept': 'application/json,text/html,*/*;q=0.8',
 };
 
-function httpsGetBody(url: string, hops = 0): Promise<string> {
+// JSON GET — follows redirects, returns parsed JSON.
+function jsonGet(url: string, hops = 0): Promise<any> {
   return new Promise((resolve, reject) => {
     const mod = url.startsWith('https') ? https : http;
     const req = mod.get(url, { headers: HEADERS }, (res) => {
@@ -18,12 +19,15 @@ function httpsGetBody(url: string, hops = 0): Promise<string> {
         const next = res.headers.location.startsWith('http')
           ? res.headers.location
           : new URL(res.headers.location, url).href;
-        resolve(httpsGetBody(next, hops + 1));
+        resolve(jsonGet(next, hops + 1));
         return;
       }
       const chunks: Buffer[] = [];
       res.on('data', (c) => chunks.push(c));
-      res.on('end', () => resolve(Buffer.concat(chunks).toString()));
+      res.on('end', () => {
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+        catch { resolve(null); }
+      });
       res.on('error', reject);
     });
     req.on('error', reject);
@@ -31,54 +35,82 @@ function httpsGetBody(url: string, hops = 0): Promise<string> {
   });
 }
 
-// Extract a contributor photo URL from Google Maps HTML.
-// Photos appear as lh5/lh3.googleusercontent.com/p/... CDN URLs embedded in the page data.
-function extractPhotoFromHtml(html: string): string | null {
-  // Pattern 1: escaped variant inside JSON blobs — https:\/\/lh5.googleusercontent.com\/p\/...
-  const escapedMatches = html.matchAll(/https:\\\/\\\/lh[35]\.googleusercontent\.com\\\/p\\\/([A-Za-z0-9_-]+)/g);
-  for (const m of escapedMatches) {
-    return `https://lh5.googleusercontent.com/p/${m[1]}=w800-h600-k-no`;
-  }
+// HEAD/GET without following redirects — used to capture the CDN redirect from the Places Photo API.
+function headNoFollow(url: string): Promise<{ statusCode: number; location: string | null }> {
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, { method: 'HEAD', headers: HEADERS }, (res) => {
+      res.resume();
+      resolve({
+        statusCode: res.statusCode ?? 0,
+        location: Array.isArray(res.headers.location)
+          ? res.headers.location[0]
+          : (res.headers.location ?? null),
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(10000, () => { req.destroy(new Error('timeout')); });
+    req.end();
+  });
+}
 
-  // Pattern 2: plain variant — https://lh5.googleusercontent.com/p/...
-  const plainMatches = html.matchAll(/https:\/\/lh[35]\.googleusercontent\.com\/p\/([A-Za-z0-9_-]+)/g);
-  for (const m of plainMatches) {
-    return `https://lh5.googleusercontent.com/p/${m[1]}=w800-h600-k-no`;
-  }
+// ── Google Places API (Legacy) ────────────────────────────────────────────────
 
+// Get the first photo_reference for a place by its Google Place ID or CID.
+async function fetchPhotoRefByPlaceId(googlePlaceId: string, apiKey: string): Promise<string | null> {
+  // Numeric-only IDs are CIDs; standard place IDs are alphanumeric (ChIJ…)
+  const param = /^\d+$/.test(googlePlaceId) ? `cid=${googlePlaceId}` : `place_id=${googlePlaceId}`;
+  const data = await jsonGet(
+    `https://maps.googleapis.com/maps/api/place/details/json?${param}&fields=photos&key=${apiKey}`
+  );
+  return data?.result?.photos?.[0]?.photo_reference ?? null;
+}
+
+// Get the first photo_reference by searching for the place by name near coordinates.
+async function fetchPhotoRefBySearch(name: string, lat: number, lng: number, apiKey: string): Promise<string | null> {
+  const input = encodeURIComponent(name);
+  const data = await jsonGet(
+    `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${input}&inputtype=textquery&locationbias=point:${lat},${lng}&fields=photos&key=${apiKey}`
+  );
+  return data?.candidates?.[0]?.photos?.[0]?.photo_reference ?? null;
+}
+
+// Exchange a photo_reference for the actual CDN image URL by following the Places Photo redirect.
+async function photoRefToCdnUrl(photoReference: string, apiKey: string): Promise<string | null> {
+  const url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoReference}&key=${apiKey}`;
+  const { statusCode, location } = await headNoFollow(url);
+  if ((statusCode === 301 || statusCode === 302) && location) return location;
   return null;
 }
 
-// Fetch photo using a known Google Place ID — most reliable, used for Google Maps imports.
-// Supports both standard place IDs (ChIJ...) and numeric CIDs scraped from Google Maps lists.
-export async function fetchPhotoByPlaceId(googlePlaceId: string): Promise<string | null> {
+async function fetchPhotoUrl(
+  googlePlaceId: string | null,
+  name: string,
+  lat: number,
+  lng: number,
+  apiKey: string,
+): Promise<string | null> {
   try {
-    // Numeric-only IDs are CIDs; standard place IDs are alphanumeric (ChIJ…)
-    const isCid = /^\d+$/.test(googlePlaceId);
-    const url = isCid
-      ? `https://www.google.com/maps/place/?cid=${googlePlaceId}`
-      : `https://www.google.com/maps/place/?q=place_id:${googlePlaceId}`;
-    const html = await httpsGetBody(url);
-    return extractPhotoFromHtml(html);
+    const ref = googlePlaceId
+      ? await fetchPhotoRefByPlaceId(googlePlaceId, apiKey)
+      : await fetchPhotoRefBySearch(name, lat, lng, apiKey);
+    if (!ref) return null;
+    return await photoRefToCdnUrl(ref, apiKey);
   } catch {
     return null;
   }
 }
 
-// Fetch photo by searching Google Maps with place name + coordinates — fallback for Instagram/text imports.
-export async function fetchPhotoBySearch(name: string, lat: number, lng: number): Promise<string | null> {
-  try {
-    const query = encodeURIComponent(name);
-    // Search near the known coordinates so the first result is the right place
-    const html = await httpsGetBody(`https://www.google.com/maps/search/${query}/@${lat},${lng},15z`);
-    return extractPhotoFromHtml(html);
-  } catch {
-    return null;
-  }
-}
+// ── Public API ────────────────────────────────────────────────────────────────
 
 // Fetch and save photos for all places in a list that don't have one yet.
+// Requires GOOGLE_MAPS_API_KEY to be set (Google Places API, Legacy).
 export async function fetchPhotosForList(listId: string): Promise<number> {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    console.warn('[fetch-photos] GOOGLE_MAPS_API_KEY not set — skipping photo fetch');
+    return 0;
+  }
+
   const places = await prisma.place.findMany({
     where: { listId, photoUrl: null },
     select: { id: true, googlePlaceId: true, name: true, lat: true, lng: true },
@@ -88,15 +120,15 @@ export async function fetchPhotosForList(listId: string): Promise<number> {
 
   const results = await Promise.allSettled(
     places.map(async (place) => {
-      const photoUrl = place.googlePlaceId
-        ? await fetchPhotoByPlaceId(place.googlePlaceId)
-        : await fetchPhotoBySearch(place.name, place.lat, place.lng);
-
+      const photoUrl = await fetchPhotoUrl(
+        place.googlePlaceId || null,
+        place.name,
+        place.lat,
+        place.lng,
+        apiKey,
+      );
       if (photoUrl) {
-        await prisma.place.update({
-          where: { id: place.id },
-          data: { photoUrl },
-        });
+        await prisma.place.update({ where: { id: place.id }, data: { photoUrl } });
       }
       return { id: place.id, photoUrl };
     })
