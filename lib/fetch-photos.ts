@@ -97,8 +97,11 @@ async function fetchPhotoUrl(
   apiKey: string,
 ): Promise<string | null> {
   try {
-    const ref = googlePlaceId
-      ? await fetchPhotoRefByPlaceId(googlePlaceId, apiKey)
+    // Numeric IDs from the Google Maps list scraper are internal entity IDs,
+    // not valid Places API place IDs. Only use place/details for ChIJ… IDs.
+    const isStandardPlaceId = googlePlaceId && /^ChIJ/i.test(googlePlaceId);
+    const ref = isStandardPlaceId
+      ? await fetchPhotoRefByPlaceId(googlePlaceId!, apiKey)
       : await fetchPhotoRefBySearch(name, lat, lng, apiKey);
     if (!ref) return null;
     return await photoRefToCdnUrl(ref, apiKey);
