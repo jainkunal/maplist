@@ -62,6 +62,9 @@ async function fetchPhotoRefByPlaceId(googlePlaceId: string, apiKey: string): Pr
   const data = await jsonGet(
     `https://maps.googleapis.com/maps/api/place/details/json?${param}&fields=photos&key=${apiKey}`
   );
+  if (data?.status !== 'OK') {
+    console.warn(`[fetch-photos] place/details status=${data?.status} error=${data?.error_message ?? ''} id=${googlePlaceId}`);
+  }
   return data?.result?.photos?.[0]?.photo_reference ?? null;
 }
 
@@ -71,6 +74,9 @@ async function fetchPhotoRefBySearch(name: string, lat: number, lng: number, api
   const data = await jsonGet(
     `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${input}&inputtype=textquery&locationbias=point:${lat},${lng}&fields=photos&key=${apiKey}`
   );
+  if (data?.status !== 'OK') {
+    console.warn(`[fetch-photos] findplacefromtext status=${data?.status} error=${data?.error_message ?? ''} name=${name}`);
+  }
   return data?.candidates?.[0]?.photos?.[0]?.photo_reference ?? null;
 }
 
@@ -79,6 +85,7 @@ async function photoRefToCdnUrl(photoReference: string, apiKey: string): Promise
   const url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photoReference}&key=${apiKey}`;
   const { statusCode, location } = await headNoFollow(url);
   if ((statusCode === 301 || statusCode === 302) && location) return location;
+  console.warn(`[fetch-photos] photo redirect got statusCode=${statusCode} (expected 301/302)`);
   return null;
 }
 
@@ -95,7 +102,8 @@ async function fetchPhotoUrl(
       : await fetchPhotoRefBySearch(name, lat, lng, apiKey);
     if (!ref) return null;
     return await photoRefToCdnUrl(ref, apiKey);
-  } catch {
+  } catch (err: any) {
+    console.warn(`[fetch-photos] error fetching photo for "${name}": ${err?.message ?? err}`);
     return null;
   }
 }
