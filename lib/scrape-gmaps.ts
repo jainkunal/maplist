@@ -113,6 +113,10 @@ function extractList(payload: string): { title: string; places: GmapsPlace[] } {
   const data = JSON.parse(text);
   const title = (data[0][4] as string) || 'Imported List';
   const rawPlaces = data[0][8];
+  // DEBUG: log the first raw entry so we can find the ChIJ place_id field
+  if (Array.isArray(rawPlaces) && rawPlaces[0]) {
+    console.log('[scrape-gmaps] DEBUG first entry:', JSON.stringify(rawPlaces[0]));
+  }
   const places = extractPlaces(Array.isArray(rawPlaces) ? rawPlaces : []);
   return { title, places };
 }
